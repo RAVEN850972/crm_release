@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Удаление сотрудника - CRM{% endblock %}
+{% block page_name %}Удаление сотрудника{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Подтверждение удаления
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="user-avatar mx-auto mb-3" style="width: 80px; height: 80px; font-size: 2rem;">
+                            {{ user_obj.first_name.0|default:user_obj.username.0|upper }}
+                        </div>
+                        <h4>{{ user_obj.get_full_name|default:user_obj.username }}</h4>
+                        <p class="text-muted">{{ user_obj.get_role_display }}</p>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle me-2"></i>Внимание!</h6>
+                        <p class="mb-0">Вы уверены, что хотите удалить этого сотрудника? Это действие необратимо и приведет к:</p>
+                        <ul class="mt-2 mb-0">
+                            <li>Удалению всех данных пользователя</li>
+                            <li>Потере доступа к системе</li>
+                            <li>Сохранению связанных заказов (менеджер/монтажник останется в истории)</li>
+                        </ul>
+                    </div>
+
+                    <!-- User Stats -->
+                    <div class="row g-3 mb-4 text-center">
+                        {% if user_obj.role == 'manager' %}
+                        <div class="col-6">
+                            <div class="border rounded p-3">
+                                <div class="h5 mb-0 text-primary">{{ user_obj.managed_orders.count }}</div>
+                                <small class="text-muted">Управляемых заказов</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3">
+                                <div class="h5 mb-0 text-success">{{ user_obj.managed_orders.filter.status='completed'.count }}</div>
+                                <small class="text-muted">Завершенных</small>
+                            </div>
+                        </div>
+                        {% elif user_obj.role == 'installer' %}
+                        <div class="col-6">
+                            <div class="border rounded p-3">
+                                <div class="h5 mb-0 text-primary">{{ user_obj.installation_orders.count }}</div>
+                                <small class="text-muted">Монтажей</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3">
+                                <div class="h5 mb-0 text-success">{{ user_obj.installation_orders.filter.status='completed'.count }}</div>
+                                <small class="text-muted">Завершенных</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <form method="post" class="d-flex justify-content-between">
+                        {% csrf_token %}
+                        <a href="{% url 'user_accounts:user_detail' user_obj.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Отмена
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-2"></i>Да, удалить сотрудника
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.user-avatar {
+    background: linear-gradient(135deg, var(--danger-color), #f87171);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.card.border-danger {
+    border-width: 2px;
+}
+
+.alert {
+    border-radius: 8px;
+}
+</style>
+{% endblock %}

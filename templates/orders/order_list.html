@@ -1,0 +1,1742 @@
+{% extends 'base.html' %}
+
+{% block title %}Заказы - CRM{% endblock %}
+{% block page_name %}Заказы{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- CSRF Token -->
+    {% csrf_token %}
+    
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">Заказы</h1>
+                <p class="page-subtitle">Управление заказами и контроль выполнения</p>
+            </div>
+            <div class="d-flex gap-2">
+                {% if user.role in 'owner,manager' %}
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#orderModal" onclick="openOrderModal()">
+                    <i class="bi bi-plus-circle me-2"></i>Создать заказ
+                </button>
+                {% endif %}
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-download me-2"></i>Экспорт
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="exportOrders('excel')"><i class="bi bi-file-earmark-excel me-2"></i>Excel</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <i class="bi bi-clipboard-check"></i>
+                </div>
+                <h3 class="stats-value" id="totalOrders">0</h3>
+                <p class="stats-label">Всего заказов</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);">
+                    <i class="bi bi-clock"></i>
+                </div>
+                <h3 class="stats-value" id="newOrders">0</h3>
+                <p class="stats-label">Новые</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+                    <i class="bi bi-gear"></i>
+                </div>
+                <h3 class="stats-value" id="inProgressOrders">0</h3>
+                <p class="stats-label">В работе</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <h3 class="stats-value" id="completedOrders">0</h3>
+                <p class="stats-label">Завершено</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Поиск</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="№ заказа, клиент...">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Статус</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">Все статусы</option>
+                        <option value="new">Новые</option>
+                        <option value="in_progress">В работе</option>
+                        <option value="completed">Завершенные</option>
+                    </select>
+                </div>
+                {% if user.role == 'owner' %}
+                <div class="col-md-2">
+                    <label class="form-label">Менеджер</label>
+                    <select class="form-select" id="managerFilter">
+                        <option value="">Все менеджеры</option>
+                    </select>
+                </div>
+                {% endif %}
+                <div class="col-md-2">
+                    <label class="form-label">Период</label>
+                    <select class="form-select" id="periodFilter">
+                        <option value="">Все время</option>
+                        <option value="today">Сегодня</option>
+                        <option value="week">Эта неделя</option>
+                        <option value="month">Этот месяц</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Сортировка</label>
+                    <select class="form-select" id="sortBy">
+                        <option value="-created_at">По дате (новые)</option>
+                        <option value="created_at">По дате (старые)</option>
+                        <option value="-total_cost">По сумме (убыв.)</option>
+                        <option value="total_cost">По сумме (возр.)</option>
+                        <option value="status">По статусу</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Список заказов</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small" id="ordersCount">Загрузка...</span>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <input type="radio" class="btn-check" name="viewMode" id="tableView" checked>
+                        <label class="btn btn-outline-primary" for="tableView"><i class="bi bi-table"></i></label>
+                        
+                        <input type="radio" class="btn-check" name="viewMode" id="kanbanView">
+                        <label class="btn btn-outline-primary" for="kanbanView"><i class="bi bi-kanban"></i></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <!-- Table View -->
+            <div id="tableViewContainer">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th width="100">№ Заказа</th>
+                                <th>Клиент</th>
+                                <th>Менеджер</th>
+                                <th>Статус</th>
+                                <th>Сумма</th>
+                                <th>Монтажники</th>
+                                <th>Дата создания</th>
+                                <th width="120">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <!-- Loading state -->
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Загрузка...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted small">Загрузка заказов...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Kanban View -->
+            <div id="kanbanViewContainer" style="display: none;">
+                <div class="row g-3 p-3">
+                    <div class="col-md-4">
+                        <div class="kanban-column">
+                            <div class="kanban-header bg-warning">
+                                <h6 class="mb-0 text-white">Новые</h6>
+                                <span class="badge bg-light text-dark" id="newOrdersCount">0</span>
+                            </div>
+                            <div class="kanban-body" id="newOrdersColumn">
+                                <!-- New orders cards -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="kanban-column">
+                            <div class="kanban-header bg-primary">
+                                <h6 class="mb-0 text-white">В работе</h6>
+                                <span class="badge bg-light text-dark" id="inProgressOrdersCount">0</span>
+                            </div>
+                            <div class="kanban-body" id="inProgressOrdersColumn">
+                                <!-- In progress orders cards -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="kanban-column">
+                            <div class="kanban-header bg-success">
+                                <h6 class="mb-0 text-white">Завершенные</h6>
+                                <span class="badge bg-light text-dark" id="completedOrdersCount">0</span>
+                            </div>
+                            <div class="kanban-body" id="completedOrdersColumn">
+                                <!-- Completed orders cards -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="card-footer">
+            <nav aria-label="Навигация по страницам">
+                <ul class="pagination justify-content-center mb-0" id="pagination">
+                    <!-- Pagination will be loaded here -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Order Modal -->
+<div class="modal fade" id="orderModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderModalTitle">Создать заказ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="orderForm">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <!-- Client Selection -->
+                        <div class="col-md-6">
+                            <label for="orderClient" class="form-label">Клиент *</label>
+                            <div class="input-group">
+                                <select class="form-select" id="orderClient" name="client" required>
+                                    <option value="">Выберите клиента</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary" onclick="openClientModal()" title="Добавить клиента">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Manager Selection -->
+                        <div class="col-md-6">
+                            <label for="orderManager" class="form-label">Менеджер *</label>
+                            <select class="form-select" id="orderManager" name="manager" required>
+                                <option value="">Выберите менеджера</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Status -->
+                        <div class="col-md-6">
+                            <label for="orderStatus" class="form-label">Статус</label>
+                            <select class="form-select" id="orderStatus" name="status">
+                                <option value="new">Новый</option>
+                                <option value="in_progress">В работе</option>
+                                <option value="completed">Завершен</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Installers -->
+                        <div class="col-md-6">
+                            <label class="form-label">Монтажники</label>
+                            <div id="installersContainer">
+                                <!-- Installers checkboxes will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Order Items Section -->
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">Позиции заказа</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addOrderItem()">
+                                <i class="bi bi-plus me-1"></i>Добавить позицию
+                            </button>
+                        </div>
+                        
+                        <div id="orderItemsContainer">
+                            <!-- Order items will be added here -->
+                            <div class="text-center py-3 text-muted" id="noItemsMessage">
+                                <i class="bi bi-inbox"></i>
+                                <p class="mt-2 mb-0">Позиции не добавлены</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Total -->
+                        <div class="row mt-3">
+                            <div class="col-md-8"></div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <strong>Общая сумма:</strong>
+                                            <strong class="text-primary fs-5" id="orderTotal">0 ₽</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="saveOrderBtn">
+                        <i class="bi bi-check-lg me-2"></i>Сохранить заказ
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Order Details Modal -->
+<div class="modal fade" id="orderDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Детали заказа</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="orderDetailsBody">
+                <!-- Order details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                {% if user.role in 'owner,manager' %}
+                <button type="button" class="btn btn-primary" id="editOrderFromDetails" onclick="editCurrentOrder()">
+                    <i class="bi bi-pencil me-2"></i>Редактировать
+                </button>
+                {% endif %}
+                {% if user.role == 'installer' or user.role in 'owner,manager' %}
+                <div class="btn-group">
+                    <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-gear me-2"></i>Изменить статус
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="changeOrderStatusFromDetails('in_progress')">В работе</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="changeOrderStatusFromDetails('completed')">Завершить</a></li>
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Client Modal -->
+<div class="modal fade" id="quickClientModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Быстрое добавление клиента</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="quickClientForm">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="quickClientName" class="form-label">Имя клиента *</label>
+                            <input type="text" class="form-control" id="quickClientName" name="name" required>
+                        </div>
+                        <div class="col-12">
+                            <label for="quickClientPhone" class="form-label">Телефон *</label>
+                            <input type="tel" class="form-control" id="quickClientPhone" name="phone" required>
+                        </div>
+                        <div class="col-12">
+                            <label for="quickClientAddress" class="form-label">Адрес *</label>
+                            <input type="text" class="form-control" id="quickClientAddress" name="address" required>
+                        </div>
+                        <div class="col-12">
+                            <label for="quickClientSource" class="form-label">Источник *</label>
+                            <select class="form-select" id="quickClientSource" name="source" required>
+                                <option value="">Выберите источник</option>
+                                <option value="avito">Авито</option>
+                                <option value="vk">ВКонтакте</option>
+                                <option value="website">Сайт</option>
+                                <option value="recommendations">Рекомендации</option>
+                                <option value="other">Другое</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="saveQuickClientBtn">
+                        <i class="bi bi-check-lg me-2"></i>Добавить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentOrders = [];
+let currentPage = 1;
+let totalPages = 1;
+let isEditing = false;
+let editingOrderId = null;
+let orderItems = [];
+let itemCounter = 0;
+let currentViewingOrderId = null;
+let allServices = [];
+let allSellers = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadOrders();
+    loadStats();
+    loadDropdownData();
+    
+    // Search functionality
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentPage = 1;
+            loadOrders();
+        }, 300);
+    });
+    
+    // Filter change handlers
+    ['statusFilter', 'managerFilter', 'periodFilter', 'sortBy'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', () => {
+                currentPage = 1;
+                loadOrders();
+            });
+        }
+    });
+    
+    // View mode toggle
+    document.querySelectorAll('input[name="viewMode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            toggleViewMode(this.id);
+        });
+    });
+    
+    // Form submissions
+    document.getElementById('orderForm').addEventListener('submit', handleOrderSubmit);
+    document.getElementById('quickClientForm').addEventListener('submit', handleQuickClientSubmit);
+});
+
+// Исправляем функцию получения CSRF токена
+function getCsrfToken() {
+    const token = document.querySelector('[name=csrfmiddlewaretoken]');
+    return token ? token.value : '';
+}
+
+async function loadOrders() {
+    try {
+        const params = new URLSearchParams({
+            page: currentPage,
+            search: document.getElementById('searchInput').value,
+            status: document.getElementById('statusFilter').value,
+            ordering: document.getElementById('sortBy').value
+        });
+        
+        // Add manager filter if exists (for owner)
+        const managerFilter = document.getElementById('managerFilter');
+        if (managerFilter && managerFilter.value) {
+            params.append('manager', managerFilter.value);
+        }
+        
+        // Add period filter
+        const periodFilter = document.getElementById('periodFilter').value;
+        if (periodFilter) {
+            const now = new Date();
+            let startDate;
+            
+            switch (periodFilter) {
+                case 'today':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    break;
+                case 'week':
+                    startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    break;
+                case 'month':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                    break;
+            }
+            
+            if (startDate) {
+                params.append('created_at__gte', startDate.toISOString().split('T')[0]);
+            }
+        }
+        
+        const response = await fetch(`/api/orders/?${params}`);
+        const data = await response.json();
+        
+        currentOrders = data.results;
+        totalPages = Math.ceil(data.count / 20);
+        
+        updateOrdersDisplay();
+        updatePagination();
+        updateOrdersCount(data.count);
+        
+    } catch (error) {
+        console.error('Error loading orders:', error);
+        showToast('Ошибка загрузки заказов', 'danger');
+    }
+}
+
+function updateOrdersDisplay() {
+    const tableView = document.getElementById('tableView').checked;
+    
+    if (tableView) {
+        updateTableView();
+    } else {
+        updateKanbanView();
+    }
+}
+
+function updateTableView() {
+    const tbody = document.getElementById('ordersTableBody');
+    
+    if (currentOrders.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4">
+                    <i class="bi bi-inbox display-4 text-muted"></i>
+                    <p class="mt-2 text-muted">Заказы не найдены</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = currentOrders.map(order => `
+        <tr>
+            <td>
+                <div class="fw-bold text-primary">#${order.id}</div>
+                <small class="text-muted">${order.items_count || 0} поз.</small>
+            </td>
+            <td>
+                <div>
+                    <div class="fw-medium">${order.client_name}</div>
+                    <small class="text-muted">${order.client_phone}</small>
+                </div>
+            </td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="user-avatar me-2" style="width: 30px; height: 30px; font-size: 0.75rem;">
+                        ${order.manager_name ? order.manager_name.charAt(0) : 'M'}
+                    </div>
+                    <span class="small">${order.manager_name}</span>
+                </div>
+            </td>
+            <td>
+                <span class="badge bg-${getStatusColor(order.status)}">${order.status_display}</span>
+            </td>
+            <td>
+                <div class="fw-bold">${formatCurrency(order.total_cost)}</div>
+                ${order.total_profit ? `<small class="text-success">+${formatCurrency(order.total_profit)}</small>` : ''}
+            </td>
+            <td>
+                <div class="d-flex flex-wrap gap-1">
+                    ${order.installers_names && order.installers_names.length > 0 ? order.installers_names.map(installer => `
+                        <span class="badge bg-secondary small">${installer.name}</span>
+                    `).join('') : '<span class="text-muted small">Не назначены</span>'}
+                </div>
+            </td>
+            <td>
+                <div>${formatDate(order.created_at)}</div>
+                ${order.completed_at ? `<small class="text-success">Завершен: ${formatDate(order.completed_at)}</small>` : ''}
+            </td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" onclick="viewOrderDetails(${order.id})" title="Просмотр">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    {% if user.role in 'owner,manager' %}
+                    <button class="btn btn-outline-warning" onclick="editOrder(${order.id})" title="Редактировать">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    {% endif %}
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown" title="Статус">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            ${order.status !== 'in_progress' ? '<li><a class="dropdown-item" href="#" onclick="quickChangeStatus(' + order.id + ', \'in_progress\')">В работе</a></li>' : ''}
+                            ${order.status !== 'completed' ? '<li><a class="dropdown-item" href="#" onclick="quickChangeStatus(' + order.id + ', \'completed\')">Завершить</a></li>' : ''}
+                        </ul>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateKanbanView() {
+    const newColumn = document.getElementById('newOrdersColumn');
+    const inProgressColumn = document.getElementById('inProgressOrdersColumn');
+    const completedColumn = document.getElementById('completedOrdersColumn');
+    
+    // Group orders by status
+    const ordersByStatus = {
+        new: currentOrders.filter(o => o.status === 'new'),
+        in_progress: currentOrders.filter(o => o.status === 'in_progress'),
+        completed: currentOrders.filter(o => o.status === 'completed')
+    };
+    
+    // Update counters
+    document.getElementById('newOrdersCount').textContent = ordersByStatus.new.length;
+    document.getElementById('inProgressOrdersCount').textContent = ordersByStatus.in_progress.length;
+    document.getElementById('completedOrdersCount').textContent = ordersByStatus.completed.length;
+    
+    // Update columns
+    [
+        { column: newColumn, orders: ordersByStatus.new },
+        { column: inProgressColumn, orders: ordersByStatus.in_progress },
+        { column: completedColumn, orders: ordersByStatus.completed }
+    ].forEach(({ column, orders }) => {
+        if (orders.length === 0) {
+            column.innerHTML = `
+                <div class="text-center py-3 text-muted">
+                    <i class="bi bi-inbox"></i>
+                    <p class="mt-2 mb-0 small">Нет заказов</p>
+                </div>
+            `;
+        } else {
+            column.innerHTML = orders.map(order => `
+                <div class="kanban-card" data-order-id="${order.id}" onclick="viewOrderDetails(${order.id})">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="fw-bold text-primary">#${order.id}</span>
+                        <span class="badge bg-light text-dark">${order.items_count || 0} поз.</span>
+                    </div>
+                    <h6 class="mb-2">${order.client_name}</h6>
+                    <div class="small text-muted mb-2">${order.client_phone}</div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-success">${formatCurrency(order.total_cost)}</span>
+                        <small class="text-muted">${formatDate(order.created_at)}</small>
+                    </div>
+                    <div class="mt-2">
+                        <div class="d-flex flex-wrap gap-1">
+                            ${order.installers_names && order.installers_names.length > 0 ? order.installers_names.slice(0, 2).map(installer => `
+                                <span class="badge bg-secondary small">${installer.name.split(' ')[0]}</span>
+                            `).join('') : ''}
+                            ${order.installers_names && order.installers_names.length > 2 ? `<span class="badge bg-light text-dark small">+${order.installers_names.length - 2}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    });
+}
+
+function toggleViewMode(mode) {
+    const tableContainer = document.getElementById('tableViewContainer');
+    const kanbanContainer = document.getElementById('kanbanViewContainer');
+    
+    if (mode === 'tableView') {
+        tableContainer.style.display = 'block';
+        kanbanContainer.style.display = 'none';
+        updateTableView();
+    } else {
+        tableContainer.style.display = 'none';
+        kanbanContainer.style.display = 'block';
+        updateKanbanView();
+    }
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'new': 'warning',
+        'in_progress': 'primary',
+        'completed': 'success'
+    };
+    return colors[status] || 'secondary';
+}
+
+function updatePagination() {
+    const pagination = document.getElementById('pagination');
+    
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    let paginationHtml = '';
+    
+    // Previous button
+    paginationHtml += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>
+    `;
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            paginationHtml += `
+                <li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+                </li>
+            `;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            paginationHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+    }
+    
+    // Next button
+    paginationHtml += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+    `;
+    
+    pagination.innerHTML = paginationHtml;
+}
+
+function changePage(page) {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    
+    currentPage = page;
+    loadOrders();
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateOrdersCount(count) {
+    document.getElementById('ordersCount').textContent = `Найдено: ${count} заказ${getPlural(count, '', 'а', 'ов')}`;
+}
+
+async function loadStats() {
+    try {
+        const response = await fetch('/api/dashboard/stats/');
+        const data = await response.json();
+        
+        // Загружаем полную статистику по заказам
+        const ordersResponse = await fetch('/api/orders/');
+        const ordersData = await ordersResponse.json();
+        
+        const orders = ordersData.results || [];
+        
+        document.getElementById('totalOrders').textContent = data.total_orders || orders.length;
+        document.getElementById('newOrders').textContent = orders.filter(o => o.status === 'new').length;
+        document.getElementById('inProgressOrders').textContent = data.in_progress_orders || orders.filter(o => o.status === 'in_progress').length;
+        document.getElementById('completedOrders').textContent = data.completed_orders || orders.filter(o => o.status === 'completed').length;
+        
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
+}
+
+async function loadDropdownData() {
+    try {
+        // Load clients
+        const clientsResponse = await fetch('/api/clients/');
+        const clientsData = await clientsResponse.json();
+        
+        const clientSelect = document.getElementById('orderClient');
+        clientSelect.innerHTML = '<option value="">Выберите клиента</option>';
+        clientsData.results.forEach(client => {
+            clientSelect.innerHTML += `<option value="${client.id}">${client.name} (${client.phone})</option>`;
+        });
+        
+        // Load managers
+        const managersResponse = await fetch('/api/users/?role=manager');
+        const managersData = await managersResponse.json();
+        
+        const managerSelect = document.getElementById('orderManager');
+        managerSelect.innerHTML = '<option value="">Выберите менеджера</option>';
+        managersData.results.forEach(manager => {
+            managerSelect.innerHTML += `<option value="${manager.id}">${manager.full_name || manager.username}</option>`;
+        });
+        
+        // Load managers for filter (owner only)
+        const managerFilter = document.getElementById('managerFilter');
+        if (managerFilter) {
+            managerFilter.innerHTML = '<option value="">Все менеджеры</option>';
+            managersData.results.forEach(manager => {
+                managerFilter.innerHTML += `<option value="${manager.id}">${manager.full_name || manager.username}</option>`;
+            });
+        }
+        
+        // Load installers
+        const installersResponse = await fetch('/api/users/?role=installer');
+        const installersData = await installersResponse.json();
+        
+        const installersContainer = document.getElementById('installersContainer');
+        installersContainer.innerHTML = '';
+        installersData.results.forEach(installer => {
+            installersContainer.innerHTML += `
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${installer.id}" id="installer_${installer.id}" name="installers">
+                    <label class="form-check-label" for="installer_${installer.id}">
+                        ${installer.full_name || installer.username}
+                    </label>
+                </div>
+            `;
+        });
+        
+        // Load services and sellers for order items
+        const [servicesResponse, sellersResponse] = await Promise.all([
+            fetch('/api/services/'),
+            fetch('/api/users/?role__in=manager,installer')
+        ]);
+        
+        allServices = (await servicesResponse.json()).results;
+        allSellers = (await sellersResponse.json()).results;
+        
+    } catch (error) {
+        console.error('Error loading dropdown data:', error);
+    }
+}
+
+function openOrderModal(orderId = null) {
+    isEditing = !!orderId;
+    editingOrderId = orderId;
+    orderItems = [];
+    itemCounter = 0;
+    
+    const modal = document.getElementById('orderModal');
+    const title = document.getElementById('orderModalTitle');
+    const form = document.getElementById('orderForm');
+    
+    title.textContent = isEditing ? 'Редактировать заказ' : 'Создать заказ';
+    form.reset();
+    
+    // Clear order items
+    document.getElementById('orderItemsContainer').innerHTML = `
+        <div class="text-center py-3 text-muted" id="noItemsMessage">
+            <i class="bi bi-inbox"></i>
+            <p class="mt-2 mb-0">Позиции не добавлены</p>
+        </div>
+    `;
+    updateOrderTotal();
+    
+    if (isEditing) {
+        loadOrderForEdit(orderId);
+    }
+    
+    // Show modal
+    const modalInstance = new bootstrap.Modal(modal);
+    modalInstance.show();
+}
+
+async function loadOrderForEdit(orderId) {
+    try {
+        const response = await fetch(`/api/orders/${orderId}/`);
+        const order = await response.json();
+        
+        // Fill form fields
+        document.getElementById('orderClient').value = order.client;
+        document.getElementById('orderManager').value = order.manager;
+        document.getElementById('orderStatus').value = order.status;
+        
+        // Set installers
+        order.installers.forEach(installerId => {
+            const checkbox = document.getElementById(`installer_${installerId}`);
+            if (checkbox) checkbox.checked = true;
+        });
+        
+        // Load order items
+        if (order.items && order.items.length > 0) {
+            document.getElementById('noItemsMessage')?.remove();
+            
+            for (const item of order.items) {
+                await addOrderItemWithData(item);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error loading order for edit:', error);
+        showToast('Ошибка загрузки данных заказа', 'danger');
+    }
+}
+
+async function addOrderItem() {
+    const itemId = itemCounter++;
+    const itemHtml = `
+        <div class="order-item border rounded p-3 mb-3" data-item-id="${itemId}">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Услуга *</label>
+                    <select class="form-select service-select" data-item-id="${itemId}" required>
+                        <option value="">Выберите услугу</option>
+                        ${allServices.map(service => `
+                            <option value="${service.id}" data-price="${service.selling_price}" data-cost="${service.cost_price}">${service.name} - ${formatCurrency(service.selling_price)}</option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Цена *</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control price-input" data-item-id="${itemId}" step="0.01" min="0" required>
+                        <span class="input-group-text">₽</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Продавец *</label>
+                    <select class="form-select seller-select" data-item-id="${itemId}" required>
+                        <option value="">Выберите продавца</option>
+                        ${allSellers.map(seller => `
+                            <option value="${seller.id}">${seller.full_name || seller.username} (${seller.role_display})</option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Прибыль</label>
+                    <div class="fw-bold text-success profit-display" data-item-id="${itemId}">0 ₽</div>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger w-100" onclick="removeOrderItem(${itemId})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const container = document.getElementById('orderItemsContainer');
+    const noItemsMessage = document.getElementById('noItemsMessage');
+    if (noItemsMessage) noItemsMessage.remove();
+    
+    container.insertAdjacentHTML('beforeend', itemHtml);
+    
+    // Add event listeners
+    const serviceSelect = container.querySelector(`[data-item-id="${itemId}"].service-select`);
+    const priceInput = container.querySelector(`[data-item-id="${itemId}"].price-input`);
+    const sellerSelect = container.querySelector(`[data-item-id="${itemId}"].seller-select`);
+    
+    serviceSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.dataset.price) {
+            priceInput.value = selectedOption.dataset.price;
+            updateItemProfit(itemId);
+            updateOrderTotal();
+        }
+    });
+    
+    priceInput.addEventListener('input', function() {
+        updateItemProfit(itemId);
+        updateOrderTotal();
+    });
+    
+    sellerSelect.addEventListener('change', function() {
+        updateOrderTotal();
+    });
+}
+
+async function addOrderItemWithData(itemData) {
+    const itemId = itemCounter++;
+    const service = allServices.find(s => s.id === itemData.service);
+    
+    const itemHtml = `
+        <div class="order-item border rounded p-3 mb-3" data-item-id="${itemId}">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Услуга *</label>
+                    <select class="form-select service-select" data-item-id="${itemId}" required>
+                        <option value="">Выберите услугу</option>
+                        ${allServices.map(service => `
+                            <option value="${service.id}" data-price="${service.selling_price}" data-cost="${service.cost_price}" ${service.id === itemData.service ? 'selected' : ''}>${service.name} - ${formatCurrency(service.selling_price)}</option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Цена *</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control price-input" data-item-id="${itemId}" step="0.01" min="0" value="${itemData.price}" required>
+                        <span class="input-group-text">₽</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Продавец *</label>
+                    <select class="form-select seller-select" data-item-id="${itemId}" required>
+                        <option value="">Выберите продавца</option>
+                        ${allSellers.map(seller => `
+                            <option value="${seller.id}" ${seller.id === itemData.seller ? 'selected' : ''}>${seller.full_name || seller.username} (${seller.role_display})</option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Прибыль</label>
+                    <div class="fw-bold text-success profit-display" data-item-id="${itemId}">0 ₽</div>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger w-100" onclick="removeOrderItem(${itemId})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const container = document.getElementById('orderItemsContainer');
+    container.insertAdjacentHTML('beforeend', itemHtml);
+    
+    // Add event listeners
+    const serviceSelect = container.querySelector(`[data-item-id="${itemId}"].service-select`);
+    const priceInput = container.querySelector(`[data-item-id="${itemId}"].price-input`);
+    const sellerSelect = container.querySelector(`[data-item-id="${itemId}"].seller-select`);
+    
+    serviceSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.dataset.price) {
+            priceInput.value = selectedOption.dataset.price;
+            updateItemProfit(itemId);
+            updateOrderTotal();
+        }
+    });
+    
+    priceInput.addEventListener('input', function() {
+        updateItemProfit(itemId);
+        updateOrderTotal();
+    });
+    
+    sellerSelect.addEventListener('change', function() {
+        updateOrderTotal();
+    });
+    
+    // Update profit and total
+    updateItemProfit(itemId);
+    updateOrderTotal();
+}
+
+function updateItemProfit(itemId) {
+    const serviceSelect = document.querySelector(`[data-item-id="${itemId}"].service-select`);
+    const priceInput = document.querySelector(`[data-item-id="${itemId}"].price-input`);
+    const profitDisplay = document.querySelector(`[data-item-id="${itemId}"].profit-display`);
+    
+    if (serviceSelect && priceInput && profitDisplay) {
+        const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+        const costPrice = parseFloat(selectedOption.dataset.cost) || 0;
+        const sellingPrice = parseFloat(priceInput.value) || 0;
+        const profit = sellingPrice - costPrice;
+        
+        profitDisplay.textContent = formatCurrency(profit);
+        profitDisplay.className = `fw-bold profit-display ${profit >= 0 ? 'text-success' : 'text-danger'}`;
+    }
+}
+
+function removeOrderItem(itemId) {
+    const item = document.querySelector(`[data-item-id="${itemId}"].order-item`);
+    if (item) {
+        item.remove();
+        orderItems = orderItems.filter(i => i.id !== itemId);
+        updateOrderTotal();
+        
+        // Show no items message if empty
+        const container = document.getElementById('orderItemsContainer');
+        if (container.children.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-3 text-muted" id="noItemsMessage">
+                    <i class="bi bi-inbox"></i>
+                    <p class="mt-2 mb-0">Позиции не добавлены</p>
+                </div>
+            `;
+        }
+    }
+}
+
+function updateOrderTotal() {
+    let total = 0;
+    
+    document.querySelectorAll('.price-input').forEach(input => {
+        if (input.value) {
+            total += parseFloat(input.value);
+        }
+    });
+    
+    document.getElementById('orderTotal').textContent = formatCurrency(total);
+}
+
+async function handleOrderSubmit(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('saveOrderBtn');
+    const originalText = btn.innerHTML;
+    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Сохранение...';
+    btn.disabled = true;
+    
+    try {
+        // Collect form data
+        const formData = new FormData(e.target);
+        const orderData = {
+            client: parseInt(formData.get('client')),
+            manager: parseInt(formData.get('manager')),
+            status: formData.get('status'),
+            installers: []
+        };
+        
+        // Collect selected installers
+        document.querySelectorAll('input[name="installers"]:checked').forEach(checkbox => {
+            orderData.installers.push(parseInt(checkbox.value));
+        });
+        
+        // Create order first
+        const url = isEditing ? `/api/orders/${editingOrderId}/` : '/api/orders/';
+        const method = isEditing ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(orderData)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Ошибка сохранения заказа');
+        }
+        
+        const order = await response.json();
+        
+        // Add order items using modal API
+        const items = [];
+        const itemElements = document.querySelectorAll('.order-item');
+        
+        for (const itemDiv of itemElements) {
+            const itemId = itemDiv.dataset.itemId;
+            const serviceSelect = itemDiv.querySelector('.service-select');
+            const priceInput = itemDiv.querySelector('.price-input');
+            const sellerSelect = itemDiv.querySelector('.seller-select');
+            
+            if (serviceSelect && priceInput && sellerSelect && 
+                serviceSelect.value && priceInput.value && sellerSelect.value) {
+                
+                const itemData = {
+                    service: parseInt(serviceSelect.value),
+                    price: parseFloat(priceInput.value),
+                    seller: parseInt(sellerSelect.value)
+                };
+                
+                // Add item via API
+                const itemResponse = await fetch(`/api/modal/order/${order.id}/items/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(itemData)
+                });
+                
+                if (!itemResponse.ok) {
+                    console.error('Error adding item:', await itemResponse.text());
+                }
+            }
+        }
+        
+        bootstrap.Modal.getInstance(document.getElementById('orderModal')).hide();
+        showToast(isEditing ? 'Заказ успешно обновлен' : 'Заказ успешно создан', 'success');
+        
+        loadOrders();
+        loadStats();
+        
+    } catch (error) {
+        console.error('Error saving order:', error);
+        showToast(error.message, 'danger');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function viewOrderDetails(orderId) {
+    try {
+        currentViewingOrderId = orderId;
+        
+        const response = await fetch(`/api/orders/${orderId}/`);
+        const order = await response.json();
+        
+        const modal = document.getElementById('orderDetailsModal');
+        const body = document.getElementById('orderDetailsBody');
+        
+        body.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Информация о заказе</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>№ заказа:</strong></td><td>#${order.id}</td></tr>
+                        <tr><td><strong>Статус:</strong></td><td><span class="badge bg-${getStatusColor(order.status)}">${order.status_display}</span></td></tr>
+                        <tr><td><strong>Дата создания:</strong></td><td>${formatDate(order.created_at)}</td></tr>
+                        ${order.completed_at ? `<tr><td><strong>Дата завершения:</strong></td><td>${formatDate(order.completed_at)}</td></tr>` : ''}
+                        <tr><td><strong>Общая сумма:</strong></td><td class="fw-bold text-success">${formatCurrency(order.total_cost)}</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6>Клиент</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>Имя:</strong></td><td>${order.client_name}</td></tr>
+                        <tr><td><strong>Телефон:</strong></td><td>${order.client_phone}</td></tr>
+                        <tr><td><strong>Адрес:</strong></td><td>${order.client_address}</td></tr>
+                    </table>
+                    
+                    <h6>Исполнители</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>Менеджер:</strong></td><td>${order.manager_name}</td></tr>
+                        <tr><td><strong>Монтажники:</strong></td><td>${order.installers_names && order.installers_names.length > 0 ? order.installers_names.map(i => i.name).join(', ') : 'Не назначены'}</td></tr>
+                    </table>
+                </div>
+            </div>
+            
+            <h6 class="mt-4">Позиции заказа</h6>
+            ${order.items && order.items.length > 0 ? `
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Услуга</th>
+                                <th>Категория</th>
+                                <th>Цена</th>
+                                <th>Себестоимость</th>
+                                <th>Прибыль</th>
+                                <th>Продавец</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${order.items.map(item => `
+                                <tr>
+                                    <td>${item.service_name}</td>
+                                    <td><span class="badge bg-secondary">${item.service_category_display}</span></td>
+                                    <td class="fw-bold">${formatCurrency(item.price)}</td>
+                                    <td>${formatCurrency(item.service_cost_price)}</td>
+                                    <td class="fw-bold text-success">${formatCurrency(item.profit)}</td>
+                                    <td>${item.seller_name}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : '<div class="text-center py-3 text-muted">Позиции не добавлены</div>'}
+        `;
+        
+        const modalInstance = new bootstrap.Modal(modal);
+        modalInstance.show();
+        
+    } catch (error) {
+        console.error('Error loading order details:', error);
+        showToast('Ошибка загрузки деталей заказа', 'danger');
+    }
+}
+
+function editOrder(orderId) {
+    openOrderModal(orderId);
+}
+
+function editCurrentOrder() {
+    if (currentViewingOrderId) {
+        bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal')).hide();
+        setTimeout(() => openOrderModal(currentViewingOrderId), 300);
+    }
+}
+
+function changeOrderStatusFromDetails(newStatus) {
+    if (currentViewingOrderId) {
+        quickChangeStatus(currentViewingOrderId, newStatus);
+        setTimeout(() => {
+            if (bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal'))) {
+                viewOrderDetails(currentViewingOrderId);
+            }
+        }, 1000);
+    }
+}
+
+async function quickChangeStatus(orderId, newStatus) {
+    try {
+        const response = await fetch(`/api/orders/${orderId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ status: newStatus })
+        });
+        
+        if (response.ok) {
+            showToast('Статус заказа обновлен', 'success');
+            loadOrders();
+            loadStats();
+        } else {
+            throw new Error('Ошибка изменения статуса');
+        }
+        
+    } catch (error) {
+        console.error('Error changing status:', error);
+        showToast(error.message, 'danger');
+    }
+}
+
+function openClientModal() {
+    const modal = new bootstrap.Modal(document.getElementById('quickClientModal'));
+    modal.show();
+}
+
+async function handleQuickClientSubmit(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('saveQuickClientBtn');
+    const originalText = btn.innerHTML;
+    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Добавление...';
+    btn.disabled = true;
+    
+    try {
+        const formData = new FormData(e.target);
+        const clientData = {
+            name: formData.get('name'),
+            phone: formData.get('phone'),
+            address: formData.get('address'),
+            source: formData.get('source')
+        };
+        
+        const response = await fetch('/api/clients/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(clientData)
+        });
+        
+        if (response.ok) {
+            const client = await response.json();
+            
+            // Add to select
+            const clientSelect = document.getElementById('orderClient');
+            const option = new Option(`${client.name} (${client.phone})`, client.id, false, true);
+            clientSelect.add(option);
+            
+            bootstrap.Modal.getInstance(document.getElementById('quickClientModal')).hide();
+            document.getElementById('quickClientForm').reset();
+            showToast('Клиент успешно добавлен', 'success');
+            
+        } else {
+            throw new Error('Ошибка добавления клиента');
+        }
+        
+    } catch (error) {
+        console.error('Error saving client:', error);
+        showToast(error.message, 'danger');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    const managerFilter = document.getElementById('managerFilter');
+    if (managerFilter) managerFilter.value = '';
+    document.getElementById('periodFilter').value = '';
+    document.getElementById('sortBy').value = '-created_at';
+    currentPage = 1;
+    loadOrders();
+}
+
+function getPlural(count, form1, form2, form5) {
+    const n = Math.abs(count) % 100;
+    const n1 = n % 10;
+    
+    if (n > 10 && n < 20) return form5;
+    if (n1 > 1 && n1 < 5) return form2;
+    if (n1 === 1) return form1;
+    return form5;
+}
+
+async function exportOrders(format) {
+    try {
+        const params = new URLSearchParams({
+            search: document.getElementById('searchInput').value,
+            status: document.getElementById('statusFilter').value
+        });
+        
+        const response = await fetch(`/api/export/orders/?${params}`);
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `orders_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            showToast('Файл успешно экспортирован', 'success');
+        } else {
+            throw new Error('Ошибка экспорта');
+        }
+        
+    } catch (error) {
+        console.error('Export error:', error);
+        showToast('Ошибка экспорта данных', 'danger');
+    }
+}
+</script>
+
+<style>
+.kanban-column {
+    background: #f8f9fa;
+    border-radius: 12px;
+    min-height: 500px;
+}
+
+.kanban-header {
+    padding: 1rem;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.kanban-body {
+    padding: 1rem;
+    max-height: 450px;
+    overflow-y: auto;
+}
+
+.kanban-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.kanban-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color);
+}
+
+.order-item {
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.order-item:hover {
+    background: #e9ecef;
+}
+
+.user-avatar {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.stats-card {
+    transition: transform 0.3s ease;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+}
+
+.btn-group .dropdown-menu {
+    z-index: 1050;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-top: none;
+}
+
+.pagination .page-link {
+    border-radius: 6px;
+    margin: 0 2px;
+    border: 1px solid #dee2e6;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.modal-xl {
+    max-width: 90%;
+}
+
+.profit-display {
+    font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+    .kanban-column {
+        margin-bottom: 1rem;
+    }
+    
+    .order-item .row > div {
+        margin-bottom: 0.5rem;
+    }
+    
+    .stats-card {
+        margin-bottom: 1rem;
+    }
+    
+    .page-header .d-flex {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .modal-xl {
+        max-width: 95%;
+    }
+}
+
+@media (max-width: 576px) {
+    .col-md-1, .col-md-2, .col-md-3, .col-md-4, .col-md-6 {
+        margin-bottom: 0.75rem;
+    }
+    
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        border-radius: 0.375rem !important;
+        margin-bottom: 0.25rem;
+    }
+    
+    .kanban-card {
+        padding: 0.75rem;
+    }
+    
+    .stats-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .stats-value {
+        font-size: 1.5rem;
+    }
+    
+    .table th, .table td {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Loading animations */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Custom scrollbar for kanban */
+.kanban-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.kanban-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.kanban-body::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.kanban-body::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Enhanced form styling */
+.form-select:focus, .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+    border-color: #ced4da;
+}
+
+/* Badge styling */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+}
+
+/* Enhanced dropdown styling */
+.dropdown-menu {
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+    border-radius: 0.5rem;
+}
+
+.dropdown-item {
+    padding: 0.5rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.dropdown-item:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 0.5rem;
+    border: none;
+}
+
+.alert-success {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+/* Enhanced table styling */
+.table-hover tbody tr:hover {
+    background-color: rgba(79, 70, 229, 0.05);
+}
+
+/* Modal enhancements */
+.modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.modal-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Card enhancements */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Button enhancements */
+.btn {
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-success:hover {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.btn-outline-warning:hover {
+    background-color: var(--warning-color);
+    border-color: var(--warning-color);
+}
+
+.btn-outline-danger:hover {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+}
+
+/* Enhanced focus states */
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(79, 70, 229, 0.25);
+}
+
+/* Print styles */
+@media print {
+    .btn, .dropdown, .pagination {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #000 !important;
+        page-break-inside: avoid;
+    }
+    
+    .table th, .table td {
+        border: 1px solid #000 !important;
+    }
+}
+</style>
+{% endblock %}

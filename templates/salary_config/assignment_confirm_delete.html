@@ -1,0 +1,24 @@
+{% extends 'salary_config/base.html' %}
+
+{% block title %}Подтверждение удаления{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Подтверждение удаления назначения</h5>
+            </div>
+            <div class="card-body">
+                <p>Вы уверены, что хотите удалить назначение конфигурации "{{ assignment.config.name }}" для пользователя "{{ assignment.user.get_full_name|default:assignment.user.username }}"?</p>
+                
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </form>
+                <a href="{% url 'salary_config:assignments' %}" class="btn btn-secondary">Отмена</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends 'salary_config/base.html' %}
+
+{% block title %}
+    {% if edit %}Редактирование конфигурации{% else %}Создание конфигурации{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                {% if edit %}Редактирование конфигурации{% else %}Создание конфигурации{% endif %}
+            </h1>
+            <a href="{% url 'salary_config:config_list' %}" class="btn btn-outline-secondary">Назад к списку</a>
+        </div>
+
+        <form method="post" class="row">
+            {% csrf_token %}
+            
+            <!-- Основная информация -->
+            <div class="col-12 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Основная информация</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            {{ config_form.name.label_tag }}
+                            {{ config_form.name }}
+                            {% if config_form.name.errors %}
+                                <div class="text-danger">{{ config_form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            {{ config_form.description.label_tag }}
+                            {{ config_form.description }}
+                            {% if config_form.description.errors %}
+                                <div class="text-danger">{{ config_form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3 form-check">
+                            {{ config_form.is_active }}
+                            {{ config_form.is_active.label_tag }}
+                            {% if config_form.is_active.errors %}
+                                <div class="text-danger">{{ config_form.is_active.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Настройки менеджера -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Настройки для менеджеров</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for field in manager_form %}
+                            <div class="mb-3">
+                                {{ field.label_tag }}
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="text-danger">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Настройки монтажника -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Настройки для монтажников</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for field in installer_form %}
+                            <div class="mb-3">
+                                {{ field.label_tag }}
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="text-danger">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Настройки владельца -->
+            <div class="col-12 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Настройки для владельца</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for field in owner_form %}
+                                <div class="col-md-6 mb-3">
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {% if field.errors %}
+                                        <div class="text-danger">{{ field.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        {% if edit %}Сохранить изменения{% else %}Создать конфигурацию{% endif %}
+                    </button>
+                    <a href="{% url 'salary_config:config_list' %}" class="btn btn-secondary">Отмена</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

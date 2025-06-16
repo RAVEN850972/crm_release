@@ -1,0 +1,738 @@
+{% extends 'base.html' %}
+
+{% block title %}Услуги - CRM{% endblock %}
+{% block page_name %}Услуги{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">Услуги</h1>
+                <p class="page-subtitle">Каталог услуг и прайс-лист</p>
+            </div>
+            <div class="d-flex gap-2">
+                {% if user.role == 'owner' %}
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#serviceModal" onclick="openServiceModal()">
+                    <i class="bi bi-plus-circle me-2"></i>Добавить услугу
+                </button>
+                {% endif %}
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-download me-2"></i>Экспорт
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/api/export/services/" onclick="exportServices('excel')"><i class="bi bi-file-earmark-excel me-2"></i>Excel</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportServices('pdf')"><i class="bi bi-file-earmark-pdf me-2"></i>PDF прайс</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <i class="bi bi-gear"></i>
+                </div>
+                <h3 class="stats-value" id="totalServices">0</h3>
+                <p class="stats-label">Всего услуг</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                    <i class="bi bi-snow2"></i>
+                </div>
+                <h3 class="stats-value" id="conditionerServices">0</h3>
+                <p class="stats-label">Кондиционеры</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                    <i class="bi bi-tools"></i>
+                </div>
+                <h3 class="stats-value" id="installationServices">0</h3>
+                <p class="stats-label">Монтажные работы</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <h3 class="stats-value" id="avgMargin">0%</h3>
+                <p class="stats-label">Средняя наценка</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Поиск</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Название услуги...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Категория</label>
+                    <select class="form-select" id="categoryFilter">
+                        <option value="">Все категории</option>
+                        <option value="conditioner">Кондиционер</option>
+                        <option value="installation">Монтаж</option>
+                        <option value="dismantling">Демонтаж</option>
+                        <option value="maintenance">Обслуживание</option>
+                        <option value="additional">Доп услуга</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Сортировка</label>
+                    <select class="form-select" id="sortBy">
+                        <option value="name">По названию</option>
+                        <option value="-selling_price">По цене (убыв.)</option>
+                        <option value="selling_price">По цене (возр.)</option>
+                        <option value="-created_at">По дате создания</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Сбросить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Grid -->
+    <div class="row g-4" id="servicesGrid">
+        <!-- Loading state -->
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="mt-2 text-muted">Загрузка услуг...</p>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <nav aria-label="Навигация по страницам" class="mt-4">
+        <ul class="pagination justify-content-center" id="pagination">
+            <!-- Pagination will be loaded here -->
+        </ul>
+    </nav>
+</div>
+
+<!-- Service Modal -->
+<div class="modal fade" id="serviceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="serviceModalTitle">Добавить услугу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="serviceForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="serviceName" class="form-label">Название услуги *</label>
+                            <input type="text" class="form-control" id="serviceName" name="name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="serviceCategory" class="form-label">Категория *</label>
+                            <select class="form-select" id="serviceCategory" name="category" required>
+                                <option value="">Выберите категорию</option>
+                                <option value="conditioner">Кондиционер</option>
+                                <option value="installation">Монтаж</option>
+                                <option value="dismantling">Демонтаж</option>
+                                <option value="maintenance">Обслуживание</option>
+                                <option value="additional">Дополнительная услуга</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="serviceCostPrice" class="form-label">Себестоимость *</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="serviceCostPrice" name="cost_price" 
+                                       step="0.01" min="0" required>
+                                <span class="input-group-text">₽</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="serviceSellingPrice" class="form-label">Цена продажи *</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="serviceSellingPrice" name="selling_price" 
+                                       step="0.01" min="0" required>
+                                <span class="input-group-text">₽</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Наценка</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="marginDisplay" readonly>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Рассчитывается автоматически</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="saveServiceBtn">
+                        <i class="bi bi-check-lg me-2"></i>Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Service Details Modal -->
+<div class="modal fade" id="serviceDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подробности услуги</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="serviceDetailsBody">
+                <!-- Service details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                {% if user.role == 'owner' %}
+                <button type="button" class="btn btn-primary" id="editServiceFromDetails">
+                    <i class="bi bi-pencil me-2"></i>Редактировать
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentServices = [];
+let currentPage = 1;
+let totalPages = 1;
+let isEditing = false;
+let editingServiceId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadServices();
+    loadStats();
+    
+    // Search functionality
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentPage = 1;
+            loadServices();
+        }, 300);
+    });
+    
+    // Filter change handlers
+    document.getElementById('categoryFilter').addEventListener('change', () => {
+        currentPage = 1;
+        loadServices();
+    });
+    
+    document.getElementById('sortBy').addEventListener('change', () => {
+        currentPage = 1;
+        loadServices();
+    });
+    
+    // Service form submission
+    document.getElementById('serviceForm').addEventListener('submit', handleServiceSubmit);
+    
+    // Price calculation
+    const costPriceInput = document.getElementById('serviceCostPrice');
+    const sellingPriceInput = document.getElementById('serviceSellingPrice');
+    const marginDisplay = document.getElementById('marginDisplay');
+    
+    [costPriceInput, sellingPriceInput].forEach(input => {
+        input.addEventListener('input', calculateMargin);
+    });
+    
+    // Edit button in details modal
+    document.getElementById('editServiceFromDetails').addEventListener('click', function() {
+        const serviceId = this.dataset.serviceId;
+        if (serviceId) {
+            editService(serviceId);
+            bootstrap.Modal.getInstance(document.getElementById('serviceDetailsModal')).hide();
+        }
+    });
+});
+
+function calculateMargin() {
+    const costPrice = parseFloat(document.getElementById('serviceCostPrice').value) || 0;
+    const sellingPrice = parseFloat(document.getElementById('serviceSellingPrice').value) || 0;
+    
+    if (costPrice > 0 && sellingPrice > 0) {
+        const margin = ((sellingPrice - costPrice) / costPrice * 100).toFixed(1);
+        document.getElementById('marginDisplay').value = margin;
+    } else {
+        document.getElementById('marginDisplay').value = '';
+    }
+}
+
+async function loadServices() {
+    try {
+        const params = new URLSearchParams({
+            page: currentPage,
+            search: document.getElementById('searchInput').value,
+            category: document.getElementById('categoryFilter').value,
+            ordering: document.getElementById('sortBy').value
+        });
+        
+        const response = await fetch(`/api/services/?${params}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        currentServices = data.results;
+        totalPages = Math.ceil(data.count / 20);
+        
+        updateServicesDisplay();
+        updatePagination();
+        
+    } catch (error) {
+        console.error('Error loading services:', error);
+        showToast('Ошибка загрузки услуг', 'danger');
+    }
+}
+
+async function loadStats() {
+    try {
+        // Загружаем все услуги для статистики
+        const response = await fetch('/api/services/');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const services = data.results;
+        
+        // Подсчитываем статистику
+        const totalServices = services.length;
+        const conditionerServices = services.filter(s => s.category === 'conditioner').length;
+        const installationServices = services.filter(s => s.category === 'installation').length;
+        
+        // Средняя наценка
+        let totalMargin = 0;
+        let validMargins = 0;
+        
+        services.forEach(service => {
+            const costPrice = parseFloat(service.cost_price);
+            const sellingPrice = parseFloat(service.selling_price);
+            if (costPrice > 0 && sellingPrice > 0) {
+                const margin = ((sellingPrice - costPrice) / costPrice) * 100;
+                totalMargin += margin;
+                validMargins++;
+            }
+        });
+        
+        const avgMargin = validMargins > 0 ? (totalMargin / validMargins).toFixed(1) : 0;
+        
+        // Обновляем UI
+        document.getElementById('totalServices').textContent = totalServices;
+        document.getElementById('conditionerServices').textContent = conditionerServices;
+        document.getElementById('installationServices').textContent = installationServices;
+        document.getElementById('avgMargin').textContent = avgMargin + '%';
+        
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
+}
+
+function updateServicesDisplay() {
+    const grid = document.getElementById('servicesGrid');
+    
+    if (currentServices.length === 0) {
+        grid.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-inbox display-4 text-muted"></i>
+                <p class="mt-2 text-muted">Услуги не найдены</p>
+                {% if user.role == 'owner' %}
+                <button class="btn btn-primary" onclick="openServiceModal()" data-bs-toggle="modal" data-bs-target="#serviceModal">
+                    <i class="bi bi-plus-circle me-2"></i>Добавить первую услугу
+                </button>
+                {% endif %}
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = currentServices.map(service => `
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 service-card" data-service-id="${service.id}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="service-icon">
+                            <i class="bi bi-${getCategoryIcon(service.category)}"></i>
+                        </div>
+                        <span class="badge bg-${getCategoryColor(service.category)}">${service.category_display}</span>
+                    </div>
+                    
+                    <h5 class="card-title mb-3">${service.name}</h5>
+                    
+                    <div class="service-pricing mb-3">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="text-muted small">Себестоимость</div>
+                                <div class="fw-bold">${formatCurrency(service.cost_price)}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-muted small">Цена продажи</div>
+                                <div class="fw-bold text-success">${formatCurrency(service.selling_price)}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="service-profit mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">Прибыль</span>
+                            <span class="fw-bold text-primary">${formatCurrency(parseFloat(service.selling_price) - parseFloat(service.cost_price))}</span>
+                        </div>
+                        <div class="progress mt-1" style="height: 4px;">
+                            <div class="progress-bar" style="width: ${Math.min(service.profit_margin || 0, 100)}%"></div>
+                        </div>
+                        <div class="text-end small text-muted mt-1">${(service.profit_margin || 0).toFixed(1)}% наценка</div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">${formatDate(service.created_at)}</small>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="viewServiceDetails(${service.id})" title="Просмотр">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            {% if user.role == 'owner' %}
+                            <button class="btn btn-outline-warning" onclick="editService(${service.id})" title="Редактировать">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="deleteService(${service.id})" title="Удалить">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updatePagination() {
+    const pagination = document.getElementById('pagination');
+    
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    let paginationHtml = '';
+    
+    // Previous button
+    paginationHtml += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>
+    `;
+
+    // Page numbers
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+        paginationHtml += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(1); return false;">1</a>
+            </li>
+        `;
+        if (startPage > 2) {
+            paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        paginationHtml += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+            </li>
+        `;
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        paginationHtml += `
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(${totalPages}); return false;">${totalPages}</a>
+            </li>
+        `;
+    }
+
+    // Next button
+    paginationHtml += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+    `;
+
+    pagination.innerHTML = paginationHtml;
+}
+
+function changePage(page) {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+        currentPage = page;
+        loadServices();
+    }
+}
+
+function getCategoryIcon(category) {
+    const icons = {
+        'conditioner': 'snow2',
+        'installation': 'tools',
+        'dismantling': 'wrench',
+        'maintenance': 'gear',
+        'additional': 'plus-circle'
+    };
+    return icons[category] || 'gear';
+}
+
+function getCategoryColor(category) {
+    const colors = {
+        'conditioner': 'primary',
+        'installation': 'success',
+        'dismantling': 'warning',
+        'maintenance': 'info',
+        'additional': 'secondary'
+    };
+    return colors[category] || 'secondary';
+}
+
+function openServiceModal() {
+    isEditing = false;
+    editingServiceId = null;
+    document.getElementById('serviceModalTitle').textContent = 'Добавить услугу';
+    document.getElementById('serviceForm').reset();
+    document.getElementById('marginDisplay').value = '';
+}
+
+async function editService(serviceId) {
+    try {
+        const response = await fetch(`/api/services/${serviceId}/`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const service = await response.json();
+        
+        isEditing = true;
+        editingServiceId = serviceId;
+        
+        document.getElementById('serviceModalTitle').textContent = 'Редактировать услугу';
+        document.getElementById('serviceName').value = service.name;
+        document.getElementById('serviceCategory').value = service.category;
+        document.getElementById('serviceCostPrice').value = service.cost_price;
+        document.getElementById('serviceSellingPrice').value = service.selling_price;
+        
+        calculateMargin();
+        
+        const modal = new bootstrap.Modal(document.getElementById('serviceModal'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('Error loading service:', error);
+        showToast('Ошибка загрузки услуги', 'danger');
+    }
+}
+
+async function deleteService(serviceId) {
+    if (!confirm('Вы уверены, что хотите удалить эту услугу?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/services/${serviceId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        showToast('Услуга успешно удалена', 'success');
+        loadServices();
+        loadStats();
+        
+    } catch (error) {
+        console.error('Error deleting service:', error);
+        showToast('Ошибка удаления услуги', 'danger');
+    }
+}
+
+async function viewServiceDetails(serviceId) {
+    try {
+        const response = await fetch(`/api/services/${serviceId}/`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const service = await response.json();
+        
+        const detailsHtml = `
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Название:</label>
+                    <p class="form-control-plaintext">${service.name}</p>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Категория:</label>
+                    <p class="form-control-plaintext">
+                        <span class="badge bg-${getCategoryColor(service.category)}">${service.category_display}</span>
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Себестоимость:</label>
+                    <p class="form-control-plaintext">${formatCurrency(service.cost_price)}</p>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Цена продажи:</label>
+                    <p class="form-control-plaintext text-success fw-bold">${formatCurrency(service.selling_price)}</p>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Прибыль:</label>
+                    <p class="form-control-plaintext text-primary fw-bold">${formatCurrency(parseFloat(service.selling_price) - parseFloat(service.cost_price))}</p>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Наценка:</label>
+                    <p class="form-control-plaintext">${service.profit_margin ? service.profit_margin.toFixed(1) : '0'}%</p>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold">Дата создания:</label>
+                    <p class="form-control-plaintext">${formatDate(service.created_at)}</p>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('serviceDetailsBody').innerHTML = detailsHtml;
+        document.getElementById('editServiceFromDetails').dataset.serviceId = serviceId;
+        
+        const modal = new bootstrap.Modal(document.getElementById('serviceDetailsModal'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('Error loading service details:', error);
+        showToast('Ошибка загрузки деталей услуги', 'danger');
+    }
+}
+
+async function handleServiceSubmit(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const serviceData = Object.fromEntries(formData);
+    
+    const saveBtn = document.getElementById('saveServiceBtn');
+    const originalText = showLoading(saveBtn);
+    
+    try {
+        let url = '/api/services/';
+        let method = 'POST';
+        
+        if (isEditing) {
+            url = `/api/services/${editingServiceId}/`;
+            method = 'PUT';
+        }
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify(serviceData)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(JSON.stringify(errorData));
+        }
+        
+        const result = await response.json();
+        
+        showToast(isEditing ? 'Услуга успешно обновлена' : 'Услуга успешно создана', 'success');
+        
+        const modal = bootstrap.Modal.getInstance(document.getElementById('serviceModal'));
+        modal.hide();
+        
+        loadServices();
+        loadStats();
+        
+    } catch (error) {
+        console.error('Error saving service:', error);
+        showToast('Ошибка сохранения услуги', 'danger');
+    } finally {
+        hideLoading(saveBtn, originalText);
+    }
+}
+
+function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('categoryFilter').value = '';
+    document.getElementById('sortBy').value = 'name';
+    currentPage = 1;
+    loadServices();
+}
+
+function exportServices(format) {
+    if (format === 'excel') {
+        // Экспорт уже настроен через прямую ссылку в HTML
+        return;
+    } else if (format === 'pdf') {
+        // Для PDF можно добавить отдельный эндпоинт или использовать клиентскую генерацию
+        showToast('PDF экспорт в разработке', 'info');
+    }
+}
+
+// Функция для получения CSRF токена
+function getCsrfToken() {
+    const token = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (token) {
+        return token.value;
+    }
+    
+    // Альтернативный способ получения CSRF токена из cookies
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') {
+            return value;
+        }
+    }
+    
+    return '';
+}
+</script>
+{% endblock %}

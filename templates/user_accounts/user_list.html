@@ -1,0 +1,765 @@
+{% extends 'base.html' %}
+{% load user_tags %}
+
+{% block title %}Сотрудники - CRM{% endblock %}
+{% block page_name %}Сотрудники{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">Сотрудники</h1>
+                <p class="page-subtitle">Управление командой</p>
+            </div>
+            {% if user.role == 'owner' %}
+            <div class="d-flex gap-2">
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#userModal" onclick="openUserModal()">
+                    <i class="bi bi-person-plus me-2"></i>Добавить сотрудника
+                </button>
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-download me-2"></i>Экспорт
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="exportUsers('excel')"><i class="bi bi-file-earmark-excel me-2"></i>Excel</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportUsers('pdf')"><i class="bi bi-file-earmark-pdf me-2"></i>PDF отчет</a></li>
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <i class="bi bi-people"></i>
+                </div>
+                <h3 class="stats-value">{{ total_users }}</h3>
+                <p class="stats-label">Всего сотрудников</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                    <i class="bi bi-person-check"></i>
+                </div>
+                <h3 class="stats-value">{{ active_users }}</h3>
+                <p class="stats-label">Активных</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                    <i class="bi bi-person-workspace"></i>
+                </div>
+                <h3 class="stats-value">{{ managers_count }}</h3>
+                <p class="stats-label">Менеджеров</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                    <i class="bi bi-tools"></i>
+                </div>
+                <h3 class="stats-value">{{ installers_count }}</h3>
+                <p class="stats-label">Монтажников</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Поиск</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" name="search" value="{{ search_query }}" placeholder="Имя, email, телефон...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Роль</label>
+                    <select class="form-select" name="role">
+                        <option value="">Все роли</option>
+                        {% for value, label in role_choices %}
+                        <option value="{{ value }}" {% if role_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Сортировка</label>
+                    <select class="form-select" name="sort">
+                        <option value="-date_joined" {% if sort_by == '-date_joined' %}selected{% endif %}>По дате (новые)</option>
+                        <option value="date_joined" {% if sort_by == 'date_joined' %}selected{% endif %}>По дате (старые)</option>
+                        <option value="first_name" {% if sort_by == 'first_name' %}selected{% endif %}>По имени (А-Я)</option>
+                        <option value="-first_name" {% if sort_by == '-first_name' %}selected{% endif %}>По имени (Я-А)</option>
+                        <option value="role" {% if sort_by == 'role' %}selected{% endif %}>По роли</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search"></i>
+                        </button>
+                        <a href="{% url 'user_accounts:user_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Users Grid -->
+    <div class="row g-4 mb-4">
+        {% for user_obj in users %}
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 user-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="user-avatar me-3" style="width: 56px; height: 56px; font-size: 1.5rem;">
+                                {{ user_obj.first_name.0|default:user_obj.username.0|upper }}
+                            </div>
+                            <div>
+                                <h5 class="mb-1">{{ user_obj.get_full_name|default:user_obj.username }}</h5>
+                                <span class="badge bg-{{ user_obj.role|role_color }}">{{ user_obj.get_role_display }}</span>
+                            </div>
+                        </div>
+                        {% if user.role == 'owner' %}
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'user_accounts:user_detail' user_obj.pk %}"><i class="bi bi-eye me-2"></i>Просмотр</a></li>
+                                <li><a class="dropdown-item" href="{% url 'user_accounts:user_edit' user_obj.pk %}"><i class="bi bi-pencil me-2"></i>Редактировать</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="toggleUserActive({{ user_obj.pk }})">
+                                    {% if user_obj.is_active %}
+                                        <i class="bi bi-person-dash me-2"></i>Деактивировать
+                                    {% else %}
+                                        <i class="bi bi-person-check me-2"></i>Активировать
+                                    {% endif %}
+                                </a></li>
+                                {% if user_obj != user %}
+                                <li><a class="dropdown-item text-danger" href="{% url 'user_accounts:user_delete' user_obj.pk %}"><i class="bi bi-trash me-2"></i>Удалить</a></li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- User Info -->
+                    <div class="user-info mb-3">
+                        {% if user_obj.email %}
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-envelope me-2 text-muted"></i>
+                            <a href="mailto:{{ user_obj.email }}" class="text-decoration-none small">{{ user_obj.email }}</a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user_obj.phone %}
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-telephone me-2 text-muted"></i>
+                            <a href="tel:{{ user_obj.phone }}" class="text-decoration-none small">{{ user_obj.phone }}</a>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-calendar me-2 text-muted"></i>
+                            <span class="small text-muted">Создан: {{ user_obj.date_joined|date:"d.m.Y" }}</span>
+                        </div>
+                        
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-clock me-2 text-muted"></i>
+                            <span class="small text-muted">Вход: {{ user_obj.last_login|date:"d.m.Y H:i"|default:"Никогда" }}</span>
+                        </div>
+                    </div>
+
+                    <!-- User Stats -->
+                    <div class="user-stats">
+                        <div class="row g-2 text-center">
+                            {% if user_obj.role == 'manager' %}
+                            <div class="col-6">
+                                <div class="stat-item">
+                                    <div class="stat-value text-primary">{{ user_obj.managed_orders_count|default:0 }}</div>
+                                    <div class="stat-label">Заказы</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-item">
+                                    <div class="stat-value text-success">{{ user_obj.total_revenue|floatformat:0|default:0 }} ₽</div>
+                                    <div class="stat-label">Выручка</div>
+                                </div>
+                            </div>
+                            {% elif user_obj.role == 'installer' %}
+                            <div class="col-6">
+                                <div class="stat-item">
+                                    <div class="stat-value text-primary">{{ user_obj.installation_orders_count|default:0 }}</div>
+                                    <div class="stat-label">Монтажи</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-item">
+                                    <div class="stat-value text-info">
+                                        {% if user_obj.is_active %}
+                                            <i class="bi bi-circle-fill text-success"></i> Активен
+                                        {% else %}
+                                            <i class="bi bi-circle-fill text-danger"></i> Неактивен
+                                        {% endif %}
+                                    </div>
+                                    <div class="stat-label">Статус</div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="col-12">
+                                <div class="stat-item">
+                                    <div class="stat-value text-warning">
+                                        <i class="bi bi-crown"></i> {{ user_obj.get_role_display }}
+                                    </div>
+                                    <div class="stat-label">Полный доступ</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="user-status">
+                            {% if user_obj.is_active %}
+                                <span class="badge bg-success">Активен</span>
+                            {% else %}
+                                <span class="badge bg-danger">Неактивен</span>
+                            {% endif %}
+                        </div>
+                        <div class="user-actions">
+                            <a href="{% url 'user_accounts:user_detail' user_obj.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if user.role == 'owner' %}
+                            <a href="{% url 'user_accounts:user_edit' user_obj.pk %}" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-4 text-muted"></i>
+                <h4 class="mt-3">Сотрудники не найдены</h4>
+                <p class="text-muted">Измените параметры поиска{% if user.role == 'owner' %} или добавьте нового сотрудника{% endif %}</p>
+                {% if user.role == 'owner' %}
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal" onclick="openUserModal()">
+                    <i class="bi bi-person-plus me-2"></i>Добавить первого сотрудника
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if users.has_other_pages %}
+    <nav aria-label="Навигация по страницам" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if users.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                    <i class="bi bi-chevron-double-left"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ users.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+
+            {% for num in users.paginator.page_range %}
+            {% if users.number == num %}
+            <li class="page-item active">
+                <span class="page-link">{{ num }}</span>
+            </li>
+            {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+
+            {% if users.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ users.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ users.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                    <i class="bi bi-chevron-double-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- User Modal (только для владельца) -->
+{% if user.role == 'owner' %}
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalTitle">Добавить сотрудника</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="userForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="username" class="form-label">Имя пользователя *</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                            <div class="form-text">Для входа в систему</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="first_name" class="form-label">Имя *</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="last_name" class="form-label">Фамилия *</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="role" class="form-label">Роль *</label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="">Выберите роль</option>
+                                {% for value, label in role_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="phone" class="form-label">Телефон</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="+7 (999) 123-45-67">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="password1" class="form-label">Пароль *</label>
+                            <input type="password" class="form-control" id="password1" name="password1" required minlength="8">
+                            <div class="form-text">Минимум 8 символов</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="password2" class="form-label">Подтверждение пароля *</label>
+                            <input type="password" class="form-control" id="password2" name="password2" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-success" id="saveUserBtn">
+                        <i class="bi bi-check-lg me-2"></i>Создать сотрудника
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.user-card {
+    transition: all 0.3s ease;
+    border: 1px solid #e5e7eb;
+}
+
+.user-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.user-avatar {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.user-info {
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+
+.user-stats {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.user-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.form-control.is-invalid {
+    border-color: #dc3545;
+}
+
+.password-strength {
+    margin-top: 0.5rem;
+}
+
+.username-check {
+    position: relative;
+}
+
+.username-check .spinner-border {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1rem;
+    height: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Передаем роль пользователя в JS
+window.userRole = '{{ user.role }}';
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Phone formatting
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            let value = this.value.replace(/\D/g, '');
+            if (value.length > 0) {
+                if (value.startsWith('8') || value.startsWith('7')) {
+                    value = '7' + value.slice(1);
+                }
+                value = '+7' + value.slice(1);
+                if (value.length > 3) value = value.slice(0, 3) + ' (' + value.slice(3);
+                if (value.length > 8) value = value.slice(0, 8) + ') ' + value.slice(8);
+                if (value.length > 14) value = value.slice(0, 14) + '-' + value.slice(14);
+                if (value.length > 17) value = value.slice(0, 17) + '-' + value.slice(17, 19);
+            }
+            this.value = value;
+        });
+    }
+
+    // Form submission handler for user creation modal
+    const userForm = document.getElementById('userForm');
+    if (userForm) {
+        userForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('saveUserBtn');
+            const originalText = showLoading(submitBtn);
+            
+            try {
+                const formData = new FormData(this);
+                const userData = Object.fromEntries(formData.entries());
+                
+                // Validate passwords match
+                if (userData.password1 !== userData.password2) {
+                    throw new Error('Пароли не совпадают');
+                }
+                
+                // Prepare data for API
+                const apiData = {
+                    username: userData.username,
+                    first_name: userData.first_name,
+                    last_name: userData.last_name,
+                    email: userData.email,
+                    phone: userData.phone,
+                    role: userData.role,
+                    password: userData.password1
+                };
+                
+                const response = await apiRequest('/api/users/', {
+                    method: 'POST',
+                    body: JSON.stringify(apiData)
+                });
+                
+                if (response) {
+                    showToast('Сотрудник успешно создан!', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+                    setTimeout(() => location.reload(), 1000);
+                }
+                
+            } catch (error) {
+                console.error('Error creating user:', error);
+                
+                // Показываем ошибки валидации
+                if (error.response && error.response.status === 400) {
+                    const errors = await error.response.json();
+                    showValidationErrors(errors);
+                } else {
+                    showToast(error.message || 'Ошибка создания сотрудника', 'danger');
+                }
+            } finally {
+                hideLoading(submitBtn, originalText);
+            }
+        });
+    }
+
+    // Username availability check
+    const usernameField = document.getElementById('username');
+    if (usernameField) {
+        let timeout;
+        usernameField.addEventListener('input', function() {
+            clearTimeout(timeout);
+            
+            // Убираем предыдущие ошибки
+            clearFieldErrors('username');
+            
+            if (this.value.length >= 3) {
+                timeout = setTimeout(() => {
+                    checkUsernameAvailability(this.value);
+                }, 500);
+            }
+        });
+    }
+
+    // Password strength indicator
+    const password1 = document.getElementById('password1');
+    if (password1) {
+        password1.addEventListener('input', function() {
+            updatePasswordStrength(this.value);
+        });
+    }
+
+    // Password confirmation validation
+    const password2 = document.getElementById('password2');
+    if (password2) {
+        password2.addEventListener('input', function() {
+            const password1Value = document.getElementById('password1').value;
+            if (this.value && password1Value && this.value !== password1Value) {
+                showFieldError('password2', 'Пароли не совпадают');
+            } else {
+                clearFieldErrors('password2');
+            }
+        });
+    }
+});
+
+function openUserModal() {
+    document.getElementById('userModalTitle').textContent = 'Добавить сотрудника';
+    document.getElementById('userForm').reset();
+    
+    // Clear any existing validation errors
+    clearAllErrors();
+}
+
+async function toggleUserActive(userId) {
+    try {
+        const response = await fetch(`/user_accounts/${userId}/toggle-active/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.error || 'Ошибка изменения статуса', 'danger');
+        }
+    } catch (error) {
+        console.error('Error toggling user status:', error);
+        showToast('Ошибка изменения статуса пользователя', 'danger');
+    }
+}
+
+function exportUsers(format) {
+    try {
+        if (window.userRole !== 'owner') {
+            showToast('Недостаточно прав для экспорта', 'warning');
+            return;
+        }
+        
+        if (format === 'excel') {
+            showToast('Экспорт пользователей в разработке', 'info');
+            // TODO: Реализовать экспорт пользователей
+            // window.open('/api/export/users/', '_blank');
+        } else if (format === 'pdf') {
+            showToast('PDF экспорт пока не реализован', 'warning');
+        }
+    } catch (error) {
+        console.error('Export error:', error);
+        showToast('Ошибка экспорта данных', 'danger');
+    }
+}
+
+// Utility functions
+async function checkUsernameAvailability(username) {
+    if (username.length < 3) return;
+    
+    try {
+        const response = await apiRequest(`/api/users/?search=${encodeURIComponent(username)}`);
+        const existingUser = response.results.find(user => user.username === username);
+        
+        if (existingUser) {
+            showFieldError('username', 'Это имя пользователя уже занято');
+            return false;
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error checking username:', error);
+        return true;
+    }
+}
+
+function updatePasswordStrength(password) {
+    const strengthContainer = document.getElementById('password1').parentNode;
+    
+    // Remove existing indicator
+    const existingIndicator = strengthContainer.querySelector('.password-strength');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+
+    if (password.length === 0) return;
+
+    const strength = calculatePasswordStrength(password);
+    const colors = ['danger', 'danger', 'warning', 'info', 'success'];
+    const texts = ['Очень слабый', 'Слабый', 'Средний', 'Хороший', 'Отличный'];
+    
+    const indicator = document.createElement('div');
+    indicator.className = 'password-strength mt-2';
+    indicator.innerHTML = `
+        <div class="progress" style="height: 4px;">
+            <div class="progress-bar bg-${colors[strength - 1] || 'danger'}" 
+                 style="width: ${(strength / 5) * 100}%"></div>
+        </div>
+        <small class="text-${colors[strength - 1] || 'danger'} mt-1 d-block">
+            ${texts[strength - 1] || texts[0]}
+        </small>
+    `;
+    
+    strengthContainer.appendChild(indicator);
+}
+
+function calculatePasswordStrength(password) {
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (/[a-z]/.test(password)) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    return strength;
+}
+
+function showFieldError(fieldName, message) {
+    clearFieldErrors(fieldName);
+    
+    const field = document.getElementById(fieldName);
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'text-danger small mt-1 field-error';
+    errorDiv.textContent = message;
+    field.parentNode.appendChild(errorDiv);
+    field.classList.add('is-invalid');
+}
+
+function clearFieldErrors(fieldName) {
+    const field = document.getElementById(fieldName);
+    const errorElements = field.parentNode.querySelectorAll('.field-error');
+    errorElements.forEach(el => el.remove());
+    field.classList.remove('is-invalid');
+}
+
+function clearAllErrors() {
+    const errorElements = document.querySelectorAll('.field-error');
+    errorElements.forEach(el => el.remove());
+    
+    const invalidFields = document.querySelectorAll('.is-invalid');
+    invalidFields.forEach(field => field.classList.remove('is-invalid'));
+    
+    const strengthIndicators = document.querySelectorAll('.password-strength');
+    strengthIndicators.forEach(el => el.remove());
+}
+
+function showValidationErrors(errors) {
+    clearAllErrors();
+    
+    for (const [field, messages] of Object.entries(errors)) {
+        if (Array.isArray(messages)) {
+            showFieldError(field, messages[0]);
+        } else if (typeof messages === 'string') {
+            showFieldError(field, messages);
+        }
+    }
+}
+
+// Enhanced API request function with error handling
+async function apiRequest(url, options = {}) {
+    const defaultOptions = {
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    };
+
+    try {
+        const response = await fetch(url, { ...defaultOptions, ...options });
+        
+        if (!response.ok) {
+            const error = new Error(`HTTP error! status: ${response.status}`);
+            error.response = response;
+            throw error;
+        }
+        
+        return await response.json();
+    } catch (error) {
+        if (error.response) {
+            error.responseData = await error.response.json().catch(() => null);
+        }
+        throw error;
+    }
+}
+</script>
+{% endblock %}

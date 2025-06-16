@@ -1,0 +1,483 @@
+{% extends 'base.html' %}
+{% load user_tags %}
+
+{% block title %}{{ user_obj.get_full_name }} - CRM{% endblock %}
+{% block page_name %}Информация о сотруднике{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+   <!-- Page Header -->
+   <div class="page-header mb-4">
+       <div class="d-flex justify-content-between align-items-center">
+           <div class="d-flex align-items-center">
+               <a href="{% url 'user_accounts:user_list' %}" class="btn btn-outline-secondary me-3">
+                   <i class="bi bi-arrow-left"></i>
+               </a>
+               <div>
+                   <h1 class="page-title mb-0">{{ user_obj.get_full_name|default:user_obj.username }}</h1>
+                   <p class="page-subtitle mb-0">{{ user_obj.get_role_display }}</p>
+               </div>
+           </div>
+           {% if user.role == 'owner' %}
+           <div class="d-flex gap-2">
+               <a href="{% url 'user_accounts:user_edit' user_obj.pk %}" class="btn btn-warning">
+                   <i class="bi bi-pencil me-2"></i>Редактировать
+               </a>
+               <button class="btn btn-outline-primary" onclick="toggleUserActive({{ user_obj.pk }})">
+                   {% if user_obj.is_active %}
+                       <i class="bi bi-person-dash me-2"></i>Деактивировать
+                   {% else %}
+                       <i class="bi bi-person-check me-2"></i>Активировать
+                   {% endif %}
+               </button>
+               {% if user_obj != user %}
+               <a href="{% url 'user_accounts:user_delete' user_obj.pk %}" class="btn btn-outline-danger">
+                   <i class="bi bi-trash me-2"></i>Удалить
+               </a>
+               {% endif %}
+           </div>
+           {% endif %}
+       </div>
+   </div>
+
+   <div class="row g-4">
+       <!-- User Profile Card -->
+       <div class="col-lg-4">
+           <div class="card">
+               <div class="card-body text-center">
+                   <!-- Avatar -->
+                   <div class="mb-3">
+                       <div class="user-avatar mx-auto" style="width: 120px; height: 120px; font-size: 3rem;">
+                           {{ user_obj.first_name.0|default:user_obj.username.0|upper }}
+                       </div>
+                   </div>
+                   
+                   <h4 class="mb-1">{{ user_obj.get_full_name|default:user_obj.username }}</h4>
+                   <p class="text-muted mb-3">{{ user_obj.get_role_display }}</p>
+                   
+                   <div class="mb-3">
+                       {% if user_obj.is_active %}
+                           <span class="badge bg-success fs-6">Активен</span>
+                       {% else %}
+                           <span class="badge bg-danger fs-6">Неактивен</span>
+                       {% endif %}
+                   </div>
+                   
+                   <!-- Contact Info -->
+                   <div class="text-start">
+                       <div class="contact-item mb-3">
+                           <i class="bi bi-person me-3 text-muted"></i>
+                           <span>{{ user_obj.username }}</span>
+                       </div>
+                       {% if user_obj.email %}
+                       <div class="contact-item mb-3">
+                           <i class="bi bi-envelope me-3 text-muted"></i>
+                           <a href="mailto:{{ user_obj.email }}">{{ user_obj.email }}</a>
+                       </div>
+                       {% endif %}
+                       {% if user_obj.phone %}
+                       <div class="contact-item mb-3">
+                           <i class="bi bi-telephone me-3 text-muted"></i>
+                           <a href="tel:{{ user_obj.phone }}">{{ user_obj.phone }}</a>
+                       </div>
+                       {% endif %}
+                       <div class="contact-item mb-3">
+                           <i class="bi bi-calendar me-3 text-muted"></i>
+                           <span>Создан: {{ user_obj.date_joined|date:"d.m.Y" }}</span>
+                       </div>
+                       <div class="contact-item">
+                           <i class="bi bi-clock me-3 text-muted"></i>
+                           <span>Последний вход: {{ user_obj.last_login|date:"d.m.Y H:i"|default:"Никогда" }}</span>
+                       </div>
+                   </div>
+               </div>
+           </div>
+
+           <!-- Quick Stats -->
+           <div class="card mt-4">
+               <div class="card-header">
+                   <h6 class="mb-0">Статистика</h6>
+               </div>
+               <div class="card-body">
+                   <div class="row g-3 text-center">
+                       {% if user_obj.role == 'manager' %}
+                       <div class="col-6">
+                           <div class="stats-box">
+                               <div class="stats-value text-primary">{{ orders_count }}</div>
+                               <div class="stats-label">Заказы</div>
+                           </div>
+                       </div>
+                       <div class="col-6">
+                           <div class="stats-box">
+                               <div class="stats-value text-success">{{ completed_orders_count }}</div>
+                               <div class="stats-label">Завершено</div>
+                           </div>
+                       </div>
+                       <div class="col-6">
+                           <div class="stats-box">
+                               <div class="stats-value text-info">{{ orders_this_month_count }}</div>
+                               <div class="stats-label">В этом месяце</div>
+                           </div>
+                       </div>
+                       <div class="col-6">
+                           <div class="stats-box">
+                               <div class="stats-value text-warning">{{ total_revenue|floatformat:0 }} ₽</div>
+                               <div class="stats-label">Выручка</div>
+                           </div>
+                       </div>
+                       {% elif user_obj.role == 'installer' %}
+                       <div class="col-6">
+                           <div class="stats-box">
+                               <div class="stats-value text-primary">{{ orders_count }}</div>
+                               <div class="stats-label">Монтажи</div>
+                           </div>
+                       </div>
+                       <div class="col-6">
+                           <div class="stats-box">
+                               <div class="stats-value text-success">{{ completed_orders_count }}</div>
+                               <div class="stats-label">Завершено</div>
+                           </div>
+                       </div>
+                       <div class="col-12">
+                           <div class="stats-box">
+                               <div class="stats-value text-info">{{ orders_this_month_count }}</div>
+                               <div class="stats-label">Монтажей в месяце</div>
+                           </div>
+                       </div>
+                       {% else %}
+                       <div class="col-12">
+                           <div class="stats-box">
+                               <div class="stats-value text-warning">
+                                   <i class="bi bi-crown"></i> Владелец
+                               </div>
+                               <div class="stats-label">Полный доступ к системе</div>
+                           </div>
+                       </div>
+                       {% endif %}
+                   </div>
+               </div>
+           </div>
+       </div>
+
+       <!-- Main Content -->
+       <div class="col-lg-8">
+           <!-- Salary Information -->
+           {% if salary_data %}
+           <div class="card mb-4">
+               <div class="card-header">
+                   <div class="d-flex justify-content-between align-items-center">
+                       <h5 class="mb-0">Зарплата за текущий месяц</h5>
+                       <span class="badge bg-primary">{{ salary_data.period|default:"Текущий период" }}</span>
+                   </div>
+               </div>
+               <div class="card-body">
+                   <div class="row g-4">
+                       {% if user_obj.role == 'manager' %}
+                       <div class="col-md-3">
+                           <div class="salary-item">
+                               <div class="salary-icon">
+                                   <i class="bi bi-wallet2"></i>
+                               </div>
+                               <div>
+                                   <div class="salary-label">Фиксированная</div>
+                                   <div class="salary-value">{{ salary_data.fixed_salary|floatformat:0|default:0 }} ₽</div>
+                               </div>
+                           </div>
+                       </div>
+                       <div class="col-md-3">
+                           <div class="salary-item">
+                               <div class="salary-icon">
+                                   <i class="bi bi-trophy"></i>
+                               </div>
+                               <div>
+                                   <div class="salary-label">Бонусы</div>
+                                   <div class="salary-value">{{ salary_data.orders_bonus|default:0|floatformat:0 }} ₽</div>
+                               </div>
+                           </div>
+                       </div>
+                       <div class="col-md-3">
+                           <div class="salary-item">
+                               <div class="salary-icon">
+                                   <i class="bi bi-graph-up"></i>
+                               </div>
+                               <div>
+                                   <div class="salary-label">% с продаж</div>
+                                   <div class="salary-value">{{ salary_data.sales_bonus|default:0|floatformat:0 }} ₽</div>
+                               </div>
+                           </div>
+                       </div>
+                       <div class="col-md-3">
+                           <div class="salary-item">
+                               <div class="salary-icon">
+                                   <i class="bi bi-currency-dollar"></i>
+                               </div>
+                               <div>
+                                   <div class="salary-label">Итого</div>
+                                   <div class="salary-value text-success">{{ salary_data.total_salary|floatformat:0 }} ₽</div>
+                               </div>
+                           </div>
+                       </div>
+                       {% elif user_obj.role == 'installer' %}
+                       <div class="col-md-4">
+                           <div class="salary-item">
+                               <div class="salary-icon">
+                                   <i class="bi bi-tools"></i>
+                               </div>
+                               <div>
+                                   <div class="salary-label">За монтажи</div>
+                                   <div class="salary-value">{{ salary_data.installation_pay|floatformat:0|default:0 }} ₽</div>
+                               </div>
+                           </div>
+                       </div>
+                       <div class="col-md-4">
+                           <div class="salary-item">
+                               <div class="salary-icon">
+                                   <i class="bi bi-plus-circle"></i>
+                               </div>
+                               <div>
+                                   <div class="salary-label">Доп. услуги</div>
+                                   <div class="salary-value">{{ salary_data.additional_pay|default:0|floatformat:0 }} ₽</div>
+                               </div>
+                           </div>
+                       </div>
+                       <div class="col-md-4">
+                           <div class="salary-item">
+                               <div class="salary-icon">
+                                   <i class="bi bi-currency-dollar"></i>
+                               </div>
+                               <div>
+                                   <div class="salary-label">Итого</div>
+                                   <div class="salary-value text-success">{{ salary_data.total_salary|floatformat:0 }} ₽</div>
+                               </div>
+                           </div>
+                       </div>
+                       {% elif user_obj.role == 'owner' %}
+                       <div class="col-md-3">
+                           <div class="salary-item">
+                               <div class="salary-icon">
+                                   <i class="bi bi-building"></i>
+                               </div>
+                               <div>
+                                   <div class="salary-label">Доля с монтажей</div>
+                                   <div class="salary-value">{{ salary_data.installation_pay|floatformat:0|default:0 }} ₽</div>
+                               </div>
+                           </div>
+                       </div>
+                       <div class="col-md-3">
+                           <div class="salary-item">
+                               <div class="salary-icon">
+                                   <i class="bi bi-pie-chart"></i>
+                               </div>
+                               <div>
+                                   <div class="salary-label">Прибыль</div>
+                                   <div class="salary-value">{{ salary_data.remaining_profit|default:0|floatformat:0 }} ₽</div>
+                               </div>
+                           </div>
+                       </div>
+                       <div class="col-md-3">
+                           <div class="salary-item">
+                               <div class="salary-icon">
+                                   <i class="bi bi-graph-up"></i>
+                               </div>
+                               <div>
+                                   <div class="salary-label">Выручка</div>
+                                   <div class="salary-value">{{ salary_data.total_revenue|default:0|floatformat:0 }} ₽</div>
+                               </div>
+                           </div>
+                       </div>
+                       <div class="col-md-3">
+                           <div class="salary-item">
+                               <div class="salary-icon">
+                                   <i class="bi bi-currency-dollar"></i>
+                               </div>
+                               <div>
+                                   <div class="salary-label">Итого</div>
+                                   <div class="salary-value text-success">{{ salary_data.total_salary|floatformat:0 }} ₽</div>
+                               </div>
+                           </div>
+                       </div>
+                       {% endif %}
+                   </div>
+               </div>
+           </div>
+           {% endif %}
+
+           <!-- Recent Orders -->
+           {% if recent_orders %}
+           <div class="card">
+               <div class="card-header">
+                   <h5 class="mb-0">Последние заказы</h5>
+               </div>
+               <div class="card-body p-0">
+                   <div class="table-responsive">
+                       <table class="table table-hover mb-0">
+                           <thead>
+                               <tr>
+                                   <th>Заказ</th>
+                                   <th>Клиент</th>
+                                   <th>Статус</th>
+                                   <th>Сумма</th>
+                                   <th>Дата</th>
+                               </tr>
+                           </thead>
+                           <tbody>
+                               {% for order in recent_orders %}
+                               <tr onclick="window.location.href='{% url 'order_detail' order.pk %}'" style="cursor: pointer;">
+                                   <td>
+                                       <strong>#{{ order.id }}</strong>
+                                   </td>
+                                   <td>{{ order.client.name }}</td>
+                                   <td>
+                                       <span class="badge bg-{{ order.status|status_color }}">{{ order.get_status_display }}</span>
+                                   </td>
+                                   <td>{{ order.total_cost|floatformat:0 }} ₽</td>
+                                   <td>{{ order.created_at|date:"d.m.Y" }}</td>
+                               </tr>
+                               {% endfor %}
+                           </tbody>
+                       </table>
+                   </div>
+               </div>
+               <div class="card-footer text-center">
+                   <a href="{% url 'order_list' %}?{% if user_obj.role == 'manager' %}manager={{ user_obj.pk }}{% elif user_obj.role == 'installer' %}installers={{ user_obj.pk }}{% endif %}" class="btn btn-outline-primary">
+                       Все заказы сотрудника
+                   </a>
+               </div>
+           </div>
+           {% else %}
+           <div class="card">
+               <div class="card-body text-center py-5">
+                   <i class="bi bi-clipboard display-4 text-muted"></i>
+                   <h5 class="mt-3">Нет заказов</h5>
+                   <p class="text-muted">У этого сотрудника пока нет связанных заказов</p>
+               </div>
+           </div>
+           {% endif %}
+       </div>
+   </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.contact-item {
+   display: flex;
+   align-items: center;
+   padding: 0.5rem 0;
+}
+
+.contact-item a {
+   color: var(--primary-color);
+   text-decoration: none;
+}
+
+.contact-item a:hover {
+   text-decoration: underline;
+}
+
+.stats-box {
+   background: #f8f9fa;
+   border-radius: 8px;
+   padding: 1rem;
+   text-align: center;
+}
+
+.stats-value {
+   font-size: 1.25rem;
+   font-weight: 700;
+   margin-bottom: 0.25rem;
+}
+
+.stats-label {
+   font-size: 0.75rem;
+   color: #6b7280;
+}
+
+.salary-item {
+   display: flex;
+   align-items: center;
+   gap: 1rem;
+   padding: 1rem;
+   background: #f8f9fa;
+   border-radius: 8px;
+   transition: all 0.3s ease;
+}
+
+.salary-item:hover {
+   background: #e9ecef;
+   transform: translateY(-2px);
+}
+
+.salary-icon {
+   width: 48px;
+   height: 48px;
+   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+   border-radius: 10px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   font-size: 1.25rem;
+   color: white;
+}
+
+.salary-label {
+   font-size: 0.875rem;
+   color: #6b7280;
+   margin-bottom: 0.25rem;
+}
+
+.salary-value {
+   font-size: 1.125rem;
+   font-weight: 600;
+   color: var(--dark-color);
+}
+
+.user-avatar {
+   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+   color: white;
+   border-radius: 50%;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   font-weight: 600;
+}
+
+.table tbody tr {
+   transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+   background-color: #f8f9fa;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function toggleUserActive(userId) {
+   try {
+       const response = await fetch(`/user_accounts/${userId}/toggle-active/`, {
+           method: 'POST',
+           headers: {
+               'X-CSRFToken': getCsrfToken(),
+               'Content-Type': 'application/json'
+           }
+       });
+       
+       const data = await response.json();
+       
+       if (data.success) {
+           showToast(data.message, 'success');
+           setTimeout(() => {
+               location.reload();
+           }, 1000);
+       } else {
+           showToast(data.error, 'danger');
+       }
+   } catch (error) {
+       console.error('Error toggling user status:', error);
+       showToast('Ошибка изменения статуса пользователя', 'danger');
+   }
+}
+</script>
+{% endblock %}

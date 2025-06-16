@@ -1,0 +1,697 @@
+{% extends 'base.html' %}
+
+{% block title %}Дашборд - CRM{% endblock %}
+{% block page_name %}Дашборд{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">Дашборд</h1>
+                <p class="page-subtitle">Добро пожаловать, {{ user.get_full_name|default:user.username }}!</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" id="refreshData">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Обновить
+                </button>
+                {% if user.role == 'owner' %}
+                <div class="dropdown">
+                    <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-plus-circle me-2"></i>Создать
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'client_new' %}"><i class="bi bi-person-plus me-2"></i>Нового клиента</a></li>
+                        <li><a class="dropdown-item" href="{% url 'order_new' %}"><i class="bi bi-plus-square me-2"></i>Новый заказ</a></li>
+                        <li><a class="dropdown-item" href="{% url 'service_new' %}"><i class="bi bi-gear-fill me-2"></i>Новую услугу</a></li>
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        {% if user.role == 'owner' %}
+        <!-- Owner Stats -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stats-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            <i class="bi bi-clipboard-check"></i>
+                        </div>
+                        <h3 class="stats-value" id="totalOrders">{{ total_orders|default:0 }}</h3>
+                        <p class="stats-label">Всего заказов</p>
+                        <div class="d-flex align-items-center mt-2">
+                            <span class="badge bg-success me-2">+{{ orders_this_month|default:0 }}</span>
+                            <small class="text-muted">в этом месяце</small>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'order_list' %}">Все заказы</a></li>
+                            <li><a class="dropdown-item" href="{% url 'order_new' %}">Создать заказ</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stats-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <h3 class="stats-value" id="totalClients">{{ total_clients|default:0 }}</h3>
+                        <p class="stats-label">Всего клиентов</p>
+                        <div class="d-flex align-items-center mt-2">
+                            <span class="badge bg-info me-2">+{{ clients_this_month|default:0 }}</span>
+                            <small class="text-muted">в этом месяце</small>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'client_list' %}">Все клиенты</a></li>
+                            <li><a class="dropdown-item" href="{% url 'client_new' %}">Добавить клиента</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stats-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                            <i class="bi bi-currency-dollar"></i>
+                        </div>
+                        <h3 class="stats-value" id="companyBalance">{{ company_balance|floatformat:0|default:0 }} ₽</h3>
+                        <p class="stats-label">Баланс компании</p>
+                        <div class="d-flex align-items-center mt-2">
+                            <span class="badge bg-success me-2">+{{ income_this_month|floatformat:0|default:0 }} ₽</span>
+                            <small class="text-muted">доход в месяце</small>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'finance_dashboard' %}">Финансы</a></li>
+                            <li><a class="dropdown-item" href="{% url 'transaction_new' %}">Добавить транзакцию</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stats-icon" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                        <h3 class="stats-value" id="completedOrders">{{ completed_orders|default:0 }}</h3>
+                        <p class="stats-label">Завершенных заказов</p>
+                        <div class="d-flex align-items-center mt-2">
+                            <span class="badge bg-warning me-2">{{ expenses_this_month|floatformat:0|default:0 }} ₽</span>
+                            <small class="text-muted">расходы в месяце</small>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'order_list' %}?status=completed">Завершенные заказы</a></li>
+                            <li><a class="dropdown-item" href="{% url 'order_list' %}?status=in_progress">В работе</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% elif user.role == 'manager' %}
+        <!-- Manager Stats -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <i class="bi bi-clipboard-check"></i>
+                </div>
+                <h3 class="stats-value">{{ total_orders|default:0 }}</h3>
+                <p class="stats-label">Мои заказы</p>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <h3 class="stats-value">{{ total_revenue|floatformat:0|default:0 }} ₽</h3>
+                <p class="stats-label">Общая выручка</p>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <h3 class="stats-value">{{ completed_orders|default:0 }}</h3>
+                <p class="stats-label">Завершено</p>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                    <i class="bi bi-people"></i>
+                </div>
+                <h3 class="stats-value">{{ manager_clients|default:0 }}</h3>
+                <p class="stats-label">Клиенты</p>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Installer Stats -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <i class="bi bi-tools"></i>
+                </div>
+                <h3 class="stats-value">{{ total_orders|default:0 }}</h3>
+                <p class="stats-label">Всего заказов</p>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                    <i class="bi bi-clock"></i>
+                </div>
+                <h3 class="stats-value">{{ in_progress_orders|default:0 }}</h3>
+                <p class="stats-label">В работе</p>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <h3 class="stats-value">{{ completed_orders|default:0 }}</h3>
+                <p class="stats-label">Завершено</p>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                    <i class="bi bi-calendar3"></i>
+                </div>
+                <h3 class="stats-value">{{ orders_this_month|default:0 }}</h3>
+                <p class="stats-label">В этом месяце</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="row g-4">
+        <!-- Charts Section -->
+        <div class="col-xl-8">
+            {% if user.role == 'owner' %}
+            <!-- Revenue Chart for Owner -->
+            <div class="card h-100">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Динамика доходов</h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <input type="radio" class="btn-check" name="chartPeriod" id="period7" checked>
+                            <label class="btn btn-outline-primary" for="period7">7 дней</label>
+                            
+                            <input type="radio" class="btn-check" name="chartPeriod" id="period30">
+                            <label class="btn btn-outline-primary" for="period30">30 дней</label>
+                            
+                            <input type="radio" class="btn-check" name="chartPeriod" id="period90">
+                            <label class="btn btn-outline-primary" for="period90">3 месяца</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueChart" height="300"></canvas>
+                </div>
+            </div>
+            {% else %}
+            <!-- Orders Chart for Manager/Installer -->
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Мои заказы</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="ordersChart" height="300"></canvas>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-xl-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Последние заказы</h5>
+                        <a href="{% url 'order_list' %}" class="btn btn-sm btn-outline-primary">Все заказы</a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="recentOrders" class="list-group list-group-flush">
+                        <!-- Orders will be loaded here -->
+                        <div class="text-center p-4">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                            <p class="mt-2 text-muted small">Загрузка заказов...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if user.role == 'owner' %}
+    <!-- Additional Charts for Owner -->
+    <div class="row g-4 mt-1">
+        <!-- Client Sources -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Источники клиентов</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="clientSourcesChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Managers -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Топ менеджеры</h5>
+                </div>
+                <div class="card-body">
+                    <div id="topManagers" class="list-group list-group-flush">
+                        <!-- Top managers will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Quick Action Modal -->
+<div class="modal fade" id="quickActionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Быстрое действие</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'client_new' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-person-plus me-2"></i>Добавить клиента
+                    </a>
+                    <a href="{% url 'order_new' %}" class="btn btn-outline-success">
+                        <i class="bi bi-plus-square me-2"></i>Создать заказ
+                    </a>
+                    {% if user.role == 'owner' %}
+                    <a href="{% url 'service_new' %}" class="btn btn-outline-info">
+                        <i class="bi bi-gear me-2"></i>Добавить услугу
+                    </a>
+                    <a href="{% url 'user_accounts:user_new' %}" class="btn btn-outline-warning">
+                        <i class="bi bi-person-badge me-2"></i>Добавить сотрудника
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize charts and load data
+    initializeDashboard();
+    
+    // Refresh data button
+    document.getElementById('refreshData').addEventListener('click', function() {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Обновление...';
+        btn.disabled = true;
+        
+        setTimeout(() => {
+            loadDashboardData();
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            showToast('Данные обновлены');
+        }, 1000);
+    });
+});
+
+async function initializeDashboard() {
+    try {
+        await loadDashboardData();
+        await loadRecentOrders();
+        
+        {% if user.role == 'owner' %}
+        await loadClientSources();
+        await loadTopManagers();
+        initializeRevenueChart();
+        {% else %}
+        initializeOrdersChart();
+        {% endif %}
+        
+    } catch (error) {
+        console.error('Dashboard initialization error:', error);
+        showToast('Ошибка загрузки данных дашборда', 'danger');
+    }
+}
+
+async function loadDashboardData() {
+    try {
+        const response = await fetch('/api/dashboard/stats/');
+        const data = await response.json();
+        
+        // Update stats cards
+        if (data.total_orders !== undefined) {
+            const element = document.getElementById('totalOrders');
+            if (element) element.textContent = data.total_orders;
+        }
+        if (data.total_clients !== undefined) {
+            const element = document.getElementById('totalClients');
+            if (element) element.textContent = data.total_clients;
+        }
+        if (data.company_balance !== undefined) {
+            const element = document.getElementById('companyBalance');
+            if (element) element.textContent = formatCurrency(data.company_balance);
+        }
+        if (data.completed_orders !== undefined) {
+            const element = document.getElementById('completedOrders');
+            if (element) element.textContent = data.completed_orders;
+        }
+        
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+    }
+}
+
+async function loadRecentOrders() {
+    try {
+        const response = await fetch('/api/orders/?limit=5&ordering=-created_at');
+        const data = await response.json();
+        
+        const container = document.getElementById('recentOrders');
+        
+        if (data.results && data.results.length > 0) {
+            container.innerHTML = data.results.map(order => `
+                <div class="list-group-item border-0">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Заказ #${order.id}</h6>
+                            <p class="mb-1 text-muted small">${order.client_name}</p>
+                            <small class="text-muted">${formatDate(order.created_at)}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-${getStatusColor(order.status)} mb-1">${order.status_display}</span>
+                            <div class="small text-muted">${formatCurrency(order.total_cost)}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = `
+                <div class="text-center p-4">
+                    <i class="bi bi-inbox display-4 text-muted"></i>
+                    <p class="mt-2 text-muted">Нет заказов</p>
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('Error loading recent orders:', error);
+        document.getElementById('recentOrders').innerHTML = `
+            <div class="text-center p-4">
+                <i class="bi bi-exclamation-triangle text-danger"></i>
+                <p class="mt-2 text-muted">Ошибка загрузки заказов</p>
+            </div>
+        `;
+    }
+}
+
+{% if user.role == 'owner' %}
+async function loadClientSources() {
+    try {
+        const response = await fetch('/api/clients/');
+        const data = await response.json();
+        
+        // Process data for chart
+        const sources = {};
+        data.results.forEach(client => {
+            sources[client.source_display] = (sources[client.source_display] || 0) + 1;
+        });
+        
+        // Create pie chart
+        const ctx = document.getElementById('clientSourcesChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(sources),
+                datasets: [{
+                    data: Object.values(sources),
+                    backgroundColor: [
+                        '#667eea',
+                        '#764ba2',
+                        '#f093fb',
+                        '#f5576c',
+                        '#4facfe',
+                        '#00f2fe'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error loading client sources:', error);
+    }
+}
+
+async function loadTopManagers() {
+    try {
+        const response = await fetch('/api/users/?role=manager');
+        const data = await response.json();
+        
+        const container = document.getElementById('topManagers');
+        
+        if (data.results && data.results.length > 0) {
+            container.innerHTML = data.results.slice(0, 5).map((manager, index) => `
+                <div class="list-group-item border-0">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <div class="user-avatar" style="width: 40px; height: 40px;">
+                                ${manager.first_name ? manager.first_name.charAt(0) : manager.username.charAt(0)}
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-0">${manager.full_name || manager.username}</h6>
+                            <small class="text-muted">${manager.role_display}</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="badge bg-primary">#${index + 1}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = `
+                <div class="text-center p-4">
+                    <i class="bi bi-people display-4 text-muted"></i>
+                    <p class="mt-2 text-muted">Нет менеджеров</p>
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('Error loading top managers:', error);
+    }
+}
+
+function initializeRevenueChart() {
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    
+    // Sample data - replace with actual API call
+    const chartData = {
+        labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+        datasets: [{
+            label: 'Доходы',
+            data: [12000, 19000, 15000, 25000, 22000, 30000, 28000],
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            fill: true,
+            tension: 0.4
+        }, {
+            label: 'Расходы',
+            data: [8000, 12000, 10000, 15000, 14000, 18000, 16000],
+            borderColor: '#f5576c',
+            backgroundColor: 'rgba(245, 87, 108, 0.1)',
+            fill: true,
+            tension: 0.4
+        }]
+    };
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Дни недели'
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Сумма (₽)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return formatCurrency(value);
+                        }
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    });
+}
+{% endif %}
+
+{% if user.role != 'owner' %}
+function initializeOrdersChart() {
+    const ctx = document.getElementById('ordersChart').getContext('2d');
+    
+    // Sample data for manager/installer
+    const chartData = {
+        labels: ['Новые', 'В работе', 'Завершенные'],
+        datasets: [{
+            label: 'Количество заказов',
+            data: [{{ total_orders|default:0 }} - {{ completed_orders|default:0 }} - {{ in_progress_orders|default:0 }}, {{ in_progress_orders|default:0 }}, {{ completed_orders|default:0 }}],
+            backgroundColor: [
+                '#fbbf24',
+                '#3b82f6',
+                '#10b981'
+            ],
+            borderWidth: 0
+        }]
+    };
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+{% endif %}
+
+function getStatusColor(status) {
+    const colors = {
+        'new': 'warning',
+        'in_progress': 'primary',
+        'completed': 'success'
+    };
+    return colors[status] || 'secondary';
+}
+
+// Auto refresh data every 5 minutes
+setInterval(() => {
+    loadDashboardData();
+    loadRecentOrders();
+}, 300000);
+
+// Chart period change handlers
+{% if user.role == 'owner' %}
+document.querySelectorAll('input[name="chartPeriod"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        if (this.checked) {
+            // Reload chart with new period
+            console.log('Loading chart for period:', this.id);
+            // Here you would reload the chart with data for the selected period
+        }
+    });
+});
+{% endif %}
+</script>
+{% endblock %}
