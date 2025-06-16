@@ -1,0 +1,354 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - CRM{% endblock %}
+{% block page_name %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <a href="{% if edit %}{% url 'user_accounts:user_detail' user_obj.pk %}{% else %}{% url 'user_accounts:user_list' %}{% endif %}" class="btn btn-outline-secondary me-3">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <div>
+                    <h1 class="page-title mb-0">{{ title }}</h1>
+                    {% if edit %}
+                    <p class="page-subtitle mb-0">{{ user_obj.get_full_name|default:user_obj.username }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        {% if edit %}
+                            <i class="bi bi-pencil me-2"></i>Редактирование сотрудника
+                        {% else %}
+                            <i class="bi bi-person-plus me-2"></i>Новый сотрудник
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Personal Information -->
+                        <div class="form-section">
+                            <h6 class="section-title">Личная информация</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.first_name.id_for_label }}" class="form-label">{{ form.first_name.label }} *</label>
+                                    {{ form.first_name }}
+                                    {% if form.first_name.errors %}
+                                        <div class="text-danger small">{{ form.first_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.last_name.id_for_label }}" class="form-label">{{ form.last_name.label }} *</label>
+                                    {{ form.last_name }}
+                                    {% if form.last_name.errors %}
+                                        <div class="text-danger small">{{ form.last_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }}</label>
+                                    {{ form.email }}
+                                    {% if form.email.errors %}
+                                        <div class="text-danger small">{{ form.email.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.phone.id_for_label }}" class="form-label">{{ form.phone.label }}</label>
+                                    {{ form.phone }}
+                                    {% if form.phone.errors %}
+                                        <div class="text-danger small">{{ form.phone.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Account Information -->
+                        <div class="form-section">
+                            <h6 class="section-title">Учетная запись</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.username.id_for_label }}" class="form-label">{{ form.username.label }} *</label>
+                                    {{ form.username }}
+                                    {% if form.username.errors %}
+                                        <div class="text-danger small">{{ form.username.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">Уникальное имя для входа в систему</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.role.id_for_label }}" class="form-label">{{ form.role.label }} *</label>
+                                    {{ form.role }}
+                                    {% if form.role.errors %}
+                                        <div class="text-danger small">{{ form.role.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if not edit %}
+                                <!-- Password fields only for new users -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.password1.id_for_label }}" class="form-label">{{ form.password1.label }} *</label>
+                                    {{ form.password1 }}
+                                    {% if form.password1.errors %}
+                                        <div class="text-danger small">{{ form.password1.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">Минимум 8 символов</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.password2.id_for_label }}" class="form-label">{{ form.password2.label }} *</label>
+                                    {{ form.password2 }}
+                                    {% if form.password2.errors %}
+                                        <div class="text-danger small">{{ form.password2.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Role Description -->
+                        <div class="form-section">
+                            <h6 class="section-title">Описание ролей</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="role-card">
+                                        <div class="role-icon owner">
+                                            <i class="bi bi-crown"></i>
+                                        </div>
+                                        <h6>Владелец</h6>
+                                        <p class="small text-muted">Полный доступ ко всем функциям системы, управление сотрудниками, финансы</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="role-card">
+                                        <div class="role-icon manager">
+                                            <i class="bi bi-person-workspace"></i>
+                                        </div>
+                                        <h6>Менеджер</h6>
+                                        <p class="small text-muted">Работа с клиентами, создание заказов, просмотр своей статистики</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="role-card">
+                                        <div class="role-icon installer">
+                                            <i class="bi bi-tools"></i>
+                                        </div>
+                                        <h6>Монтажник</h6>
+                                        <p class="small text-muted">Просмотр назначенных заказов, изменение статуса выполнения работ</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% if edit %}{% url 'user_accounts:user_detail' user_obj.pk %}{% else %}{% url 'user_accounts:user_list' %}{% endif %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Отмена
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                {% if edit %}
+                                    <i class="bi bi-check-lg me-2"></i>Сохранить изменения
+                                {% else %}
+                                    <i class="bi bi-person-plus me-2"></i>Создать сотрудника
+                                {% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.section-title {
+    color: var(--dark-color);
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--primary-color);
+    display: inline-block;
+}
+
+.role-card {
+    text-align: center;
+    padding: 1.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.role-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.role-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    margin: 0 auto 1rem;
+}
+
+.role-icon.owner {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+}
+
+.role-icon.manager {
+    background: linear-gradient(135deg, #059669, #10b981);
+}
+
+.role-icon.installer {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+}
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+
+.text-danger.small {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.form-text {
+    color: #6b7280;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Phone formatting
+    const phoneInput = document.querySelector('input[name="phone"]');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            let value = this.value.replace(/\D/g, '');
+            if (value.length > 0) {
+                if (value.startsWith('8') || value.startsWith('7')) {
+                    value = '7' + value.slice(1);
+                }
+                value = '+7' + value.slice(1);
+                if (value.length > 3) value = value.slice(0, 3) + ' (' + value.slice(3);
+                if (value.length > 8) value = value.slice(0, 8) + ') ' + value.slice(8);
+                if (value.length > 14) value = value.slice(0, 14) + '-' + value.slice(14);
+                if (value.length > 17) value = value.slice(0, 17) + '-' + value.slice(17, 19);
+            }
+            this.value = value;
+        });
+    }
+
+    // Role selection highlighting
+    const roleSelect = document.querySelector('select[name="role"]');
+    if (roleSelect) {
+        roleSelect.addEventListener('change', function() {
+            const roleCards = document.querySelectorAll('.role-card');
+            roleCards.forEach(card => {
+                card.style.borderColor = '#e5e7eb';
+                card.style.boxShadow = 'none';
+            });
+
+            if (this.value) {
+                const roleIndex = Array.from(this.options).findIndex(option => option.value === this.value) - 1;
+                if (roleIndex >= 0 && roleCards[roleIndex]) {
+                    roleCards[roleIndex].style.borderColor = 'var(--primary-color)';
+                    roleCards[roleIndex].style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                }
+            }
+        });
+
+        // Trigger on page load if role is already selected
+        if (roleSelect.value) {
+            roleSelect.dispatchEvent(new Event('change'));
+        }
+    }
+
+    // Password strength indicator
+    const password1 = document.querySelector('input[name="password1"]');
+    if (password1) {
+        password1.addEventListener('input', function() {
+            const strength = calculatePasswordStrength(this.value);
+            updatePasswordStrengthIndicator(strength);
+        });
+    }
+});
+
+function calculatePasswordStrength(password) {
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (/[a-z]/.test(password)) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    return strength;
+}
+
+function updatePasswordStrengthIndicator(strength) {
+    const password1 = document.querySelector('input[name="password1"]');
+    const container = password1.parentNode;
+    
+    // Remove existing indicator
+    const existingIndicator = container.querySelector('.password-strength');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+
+    if (password1.value.length > 0) {
+        const indicator = document.createElement('div');
+        indicator.className = 'password-strength mt-2';
+        
+        const colors = ['danger', 'danger', 'warning', 'info', 'success'];
+        const texts = ['Очень слабый', 'Слабый', 'Средний', 'Хороший', 'Отличный'];
+        
+        indicator.innerHTML = `
+            <div class="progress" style="height: 4px;">
+                <div class="progress-bar bg-${colors[strength - 1] || 'danger'}" 
+                     style="width: ${(strength / 5) * 100}%"></div>
+            </div>
+            <small class="text-${colors[strength - 1] || 'danger'} mt-1 d-block">
+                ${texts[strength - 1] || texts[0]}
+            </small>
+        `;
+        
+        container.appendChild(indicator);
+    }
+}
+</script>
+{% endblock %}

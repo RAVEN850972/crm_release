@@ -1,0 +1,1052 @@
+{% extends 'base.html' %}
+
+{% block title %}Профиль - CRM{% endblock %}
+{% block page_name %}Профиль{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">Мой профиль</h1>
+                <p class="page-subtitle">Управление личной информацией и настройками</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" onclick="changePassword()">
+                    <i class="bi bi-key me-2"></i>Сменить пароль
+                </button>
+                {% if user.role in 'installer,manager,owner' %}
+                <button class="btn btn-outline-success" onclick="downloadSalaryReport()">
+                    <i class="bi bi-download me-2"></i>Скачать справку
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Profile Information -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <!-- Avatar -->
+                    <div class="position-relative d-inline-block mb-3">
+                        <div class="user-avatar mx-auto" style="width: 120px; height: 120px; font-size: 3rem;">
+                            {{ user.first_name.0|default:user.username.0|upper }}
+                        </div>
+                        <button class="btn btn-sm btn-primary position-absolute bottom-0 end-0 rounded-circle" 
+                                style="width: 32px; height: 32px;" onclick="changeAvatar()" title="Изменить аватар">
+                            <i class="bi bi-camera"></i>
+                        </button>
+                    </div>
+                    
+                    <h4 class="mb-1">{{ user.get_full_name|default:user.username }}</h4>
+                    <p class="text-muted mb-3">{{ user.get_role_display }}</p>
+                    
+                    <!-- Contact Info -->
+                    <div class="text-start">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-envelope me-3 text-muted"></i>
+                            <span>{{ user.email|default:"Не указан" }}</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-telephone me-3 text-muted"></i>
+                            <span>{{ user.phone|default:"Не указан" }}</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-calendar me-3 text-muted"></i>
+                            <span>Регистрация: {{ user.date_joined|date:"d.m.Y" }}</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-clock me-3 text-muted"></i>
+                            <span>Вход: {{ user.last_login|date:"d.m.Y H:i"|default:"Никогда" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            {% if user.role in 'installer,manager,owner' %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Быстрая статистика</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 text-center">
+                        {% if user.role == 'manager' %}
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="h5 mb-0 text-primary" id="myOrdersCount">0</div>
+                                <small class="text-muted">Мои заказы</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="h5 mb-0 text-success" id="myRevenue">0 ₽</div>
+                                <small class="text-muted">Выручка</small>
+                            </div>
+                        </div>
+                        {% elif user.role == 'installer' %}
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="h5 mb-0 text-primary" id="myInstallations">0</div>
+                                <small class="text-muted">Монтажи</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="h5 mb-0 text-warning" id="inProgressWork">0</div>
+                                <small class="text-muted">В работе</small>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="h5 mb-0 text-primary" id="totalCompanyOrders">0</div>
+                                <small class="text-muted">Всего заказов</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="h5 mb-0 text-success" id="companyRevenue">0 ₽</div>
+                                <small class="text-muted">Выручка</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Profile Edit Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Личная информация</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="profileForm">
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="firstName" class="form-label">Имя</label>
+                                <input type="text" class="form-control" id="firstName" name="first_name" 
+                                       value="{{ user.first_name }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="lastName" class="form-label">Фамилия</label>
+                                <input type="text" class="form-control" id="lastName" name="last_name" 
+                                       value="{{ user.last_name }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ user.email }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="phone" class="form-label">Телефон</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" 
+                                       value="{{ user.phone }}">
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary" id="saveProfileBtn">
+                                    <i class="bi bi-check-lg me-2"></i>Сохранить изменения
+                                </button>
+                                <button type="button" class="btn btn-secondary ms-2" onclick="resetForm()">
+                                    <i class="bi bi-arrow-clockwise me-2"></i>Отменить
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Salary Information -->
+            {% if user.role in 'installer,manager,owner' %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Зарплата и доходы</h5>
+                        <div class="d-flex gap-2">
+                            <input type="month" class="form-control form-control-sm" 
+                                   id="salaryPeriod" value="{{ period_start|date:'Y-m' }}" 
+                                   onchange="loadSalaryData()">
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadSalaryData()">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="salaryContent">
+                        {% if salary_data %}
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="salary-card">
+                                    <div class="salary-icon">
+                                        <i class="bi bi-currency-dollar"></i>
+                                    </div>
+                                    <div>
+                                        <div class="salary-label">Общая зарплата</div>
+                                        <div class="salary-value text-success">{{ salary_data.total_salary|floatformat:0 }} ₽</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if user.role == 'manager' %}
+                            <div class="col-md-6">
+                                <div class="salary-card">
+                                    <div class="salary-icon">
+                                        <i class="bi bi-wallet2"></i>
+                                    </div>
+                                    <div>
+                                        <div class="salary-label">Фиксированная часть</div>
+                                        <div class="salary-value">{{ salary_data.fixed_salary|floatformat:0 }} ₽</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="salary-card">
+                                    <div class="salary-icon">
+                                        <i class="bi bi-trophy"></i>
+                                    </div>
+                                    <div>
+                                        <div class="salary-label">Бонусы за заказы</div>
+                                        <div class="salary-value text-primary">{{ salary_data.orders_bonus|default:0|floatformat:0 }} ₽</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="salary-card">
+                                    <div class="salary-icon">
+                                        <i class="bi bi-graph-up"></i>
+                                    </div>
+                                    <div>
+                                        <div class="salary-label">% с продаж</div>
+                                        <div class="salary-value text-info">{{ salary_data.sales_bonus|default:0|floatformat:0 }} ₽</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% elif user.role == 'installer' %}
+                            <div class="col-md-6">
+                                <div class="salary-card">
+                                    <div class="salary-icon">
+                                        <i class="bi bi-tools"></i>
+                                    </div>
+                                    <div>
+                                        <div class="salary-label">За монтажи</div>
+                                        <div class="salary-value">{{ salary_data.installation_pay|floatformat:0 }} ₽</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="salary-card">
+                                    <div class="salary-icon">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </div>
+                                    <div>
+                                        <div class="salary-label">Доп. услуги</div>
+                                        <div class="salary-value text-primary">{{ salary_data.additional_pay|floatformat:0 }} ₽</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% elif user.role == 'owner' %}
+                            <div class="col-md-6">
+                                <div class="salary-card">
+                                    <div class="salary-icon">
+                                        <i class="bi bi-building"></i>
+                                    </div>
+                                    <div>
+                                        <div class="salary-label">Доля с монтажей</div>
+                                        <div class="salary-value">{{ salary_data.installation_pay|floatformat:0 }} ₽</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="salary-card">
+                                    <div class="salary-icon">
+                                        <i class="bi bi-pie-chart"></i>
+                                    </div>
+                                    <div>
+                                        <div class="salary-label">Остаточная прибыль</div>
+                                        <div class="salary-value text-success">{{ salary_data.remaining_profit|floatformat:0 }} ₽</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Detailed breakdown -->
+                        <div class="mt-4">
+                            <h6 class="mb-3">Детализация за период</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        {% if user.role == 'manager' %}
+                                        <tr>
+                                            <td>Завершенные заказы</td>
+                                            <td class="text-end">{{ salary_data.completed_orders_count }} шт.</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Продажи кондиционеров</td>
+                                            <td class="text-end">{{ salary_data.sales_details.conditioner.count|default:0 }} шт.</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Дополнительные услуги</td>
+                                            <td class="text-end">{{ salary_data.sales_details.additional.count|default:0 }} шт.</td>
+                                        </tr>
+                                        {% elif user.role == 'installer' %}
+                                        <tr>
+                                            <td>Завершенные монтажи</td>
+                                            <td class="text-end">{{ salary_data.installation_count|default:0 }} шт.</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Дополнительные услуги</td>
+                                            <td class="text-end">{{ salary_data.additional_services_count|default:0 }} шт.</td>
+                                        </tr>
+                                        {% elif user.role == 'owner' %}
+                                        <tr>
+                                            <td>Всего заказов</td>
+                                            <td class="text-end">{{ salary_data.completed_orders_count }} шт.</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Общая выручка</td>
+                                            <td class="text-end">{{ salary_data.total_revenue|floatformat:0 }} ₽</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Себестоимость</td>
+                                            <td class="text-end">{{ salary_data.total_cost_price|floatformat:0 }} ₽</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Выплаты сотрудникам</td>
+                                            <td class="text-end">{{ salary_data.estimated_staff_payments|floatformat:0 }} ₽</td>
+                                        </tr>
+                                        {% endif %}
+                                        <tr class="table-primary">
+                                            <td><strong>Итого к выплате</strong></td>
+                                            <td class="text-end"><strong>{{ salary_data.total_salary|floatformat:0 }} ₽</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-calculator display-4 text-muted"></i>
+                            <p class="mt-2 text-muted">Данные о зарплате загружаются...</p>
+                            <button class="btn btn-primary" onclick="loadSalaryData()">
+                                <i class="bi bi-arrow-clockwise me-2"></i>Загрузить данные
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Recent Activity -->
+            {% if user.role in 'installer,manager' %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Последняя активность</h5>
+                </div>
+                <div class="card-body">
+                    <div id="recentActivity">
+                        <!-- Activity will be loaded here -->
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                            <p class="mt-2 text-muted small">Загрузка активности...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Изменить пароль</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="changePasswordForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="currentPassword" class="form-label">Текущий пароль</label>
+                        <input type="password" class="form-control" id="currentPassword" name="current_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">Новый пароль</label>
+                        <input type="password" class="form-control" id="newPassword" name="new_password" required>
+                        <div class="form-text">Минимум 8 символов</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Подтвердите пароль</label>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirm_password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="savePasswordBtn">
+                        <i class="bi bi-check-lg me-2"></i>Изменить пароль
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadQuickStats();
+    {% if user.role in 'installer,manager' %}
+    loadRecentActivity();
+    {% endif %}
+    
+    // Profile form submission
+    document.getElementById('profileForm').addEventListener('submit', handleProfileSubmit);
+    
+    // Password form submission
+    document.getElementById('changePasswordForm').addEventListener('submit', handlePasswordSubmit);
+    
+    // Phone formatting
+    const phoneInput = document.getElementById('phone');
+    phoneInput.addEventListener('input', formatPhoneNumber);
+});
+
+async function handleProfileSubmit(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('saveProfileBtn');
+    const originalText = btn.innerHTML;
+    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Сохранение...';
+    btn.disabled = true;
+    
+    try {
+        const formData = new FormData(e.target);
+        
+        const response = await fetch('{% url "user_accounts:profile" %}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            showToast('Профиль успешно обновлен', 'success');
+            
+            // Update user info in header
+            const fullName = `${formData.get('first_name')} ${formData.get('last_name')}`.trim();
+            if (fullName) {
+                document.querySelector('.user-details').innerHTML = `
+                    <div style="font-weight: 500; font-size: 0.875rem;">${fullName}</div>
+                    <div style="font-size: 0.75rem; color: #6b7280;">{{ user.get_role_display }}</div>
+                `;
+            }
+        } else {
+            throw new Error('Ошибка сохранения профиля');
+        }
+        
+    } catch (error) {
+        console.error('Error saving profile:', error);
+        showToast('Ошибка сохранения профиля', 'danger');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+function resetForm() {
+    document.getElementById('profileForm').reset();
+    // Restore original values
+    document.getElementById('firstName').value = '{{ user.first_name }}';
+    document.getElementById('lastName').value = '{{ user.last_name }}';
+    document.getElementById('email').value = '{{ user.email }}';
+    document.getElementById('phone').value = '{{ user.phone }}';
+}
+
+function changePassword() {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('changePasswordModal')).show();
+}
+
+async function handlePasswordSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const newPassword = formData.get('new_password');
+    const confirmPassword = formData.get('confirm_password');
+    
+    if (newPassword !== confirmPassword) {
+        showToast('Пароли не совпадают', 'danger');
+        return;
+    }
+    
+    if (newPassword.length < 8) {
+        showToast('Пароль должен содержать минимум 8 символов', 'danger');
+        return;
+    }
+    
+    const btn = document.getElementById('savePasswordBtn');
+    const originalText = btn.innerHTML;
+    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Изменение...';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/change-password/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                current_password: formData.get('current_password'),
+                new_password: newPassword
+            })
+        });
+        
+        if (response.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+            document.getElementById('changePasswordForm').reset();
+            showToast('Пароль успешно изменен', 'success');
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Ошибка изменения пароля');
+        }
+        
+    } catch (error) {
+        console.error('Error changing password:', error);
+        showToast(error.message, 'danger');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function loadQuickStats() {
+    try {
+        {% if user.role == 'manager' %}
+        const response = await fetch('/api/orders/?manager={{ user.id }}');
+        const data = await response.json();
+        
+        const orders = data.results || [];
+        const completedOrders = orders.filter(o => o.status === 'completed');
+        const totalRevenue = completedOrders.reduce((sum, order) => sum + parseFloat(order.total_cost || 0), 0);
+        
+        document.getElementById('myOrdersCount').textContent = orders.length;
+        document.getElementById('myRevenue').textContent = formatCurrency(totalRevenue);
+        
+        {% elif user.role == 'installer' %}
+        const response = await fetch('/api/orders/?installers={{ user.id }}');
+        const data = await response.json();
+        
+        const orders = data.results || [];
+        const completedOrders = orders.filter(o => o.status === 'completed');
+        const inProgressOrders = orders.filter(o => o.status === 'in_progress');
+        
+        document.getElementById('myInstallations').textContent = completedOrders.length;
+        document.getElementById('inProgressWork').textContent = inProgressOrders.length;
+        
+        {% elif user.role == 'owner' %}
+        const response = await fetch('/api/orders/');
+        const data = await response.json();
+        
+        const orders = data.results || [];
+        const totalRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total_cost || 0), 0);
+        
+        document.getElementById('totalCompanyOrders').textContent = orders.length;
+        document.getElementById('companyRevenue').textContent = formatCurrency(totalRevenue);
+        {% endif %}
+        
+    } catch (error) {
+        console.error('Error loading quick stats:', error);
+    }
+}
+
+{% if user.role in 'installer,manager' %}
+async function loadRecentActivity() {
+    try {
+        {% if user.role == 'manager' %}
+        const response = await fetch('/api/orders/?manager={{ user.id }}&limit=5&ordering=-created_at');
+        {% else %}
+        const response = await fetch('/api/orders/?installers={{ user.id }}&limit=5&ordering=-created_at');
+        {% endif %}
+        const data = await response.json();
+        
+        const container = document.getElementById('recentActivity');
+        
+        if (data.results && data.results.length > 0) {
+            container.innerHTML = data.results.map(order => `
+                <div class="activity-item d-flex align-items-center mb-3">
+                    <div class="activity-icon me-3">
+                        <i class="bi bi-${getActivityIcon(order.status)}"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-medium">Заказ #${order.id}</div>
+                        <div class="text-muted small">${order.client_name} • ${formatCurrency(order.total_cost)}</div>
+                        <div class="text-muted small">${formatDate(order.created_at)}</div>
+                    </div>
+                    <span class="badge bg-${getStatusColor(order.status)}">${order.status_display}</span>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = `
+                <div class="text-center py-3">
+                    <i class="bi bi-inbox display-6 text-muted"></i>
+                    <p class="mt-2 text-muted">Нет последней активности</p>
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('Error loading recent activity:', error);
+        document.getElementById('recentActivity').innerHTML = `
+            <div class="text-center py-3">
+                <i class="bi bi-exclamation-triangle text-danger"></i>
+                <p class="mt-2 text-muted">Ошибка загрузки активности</p>
+            </div>
+        `;
+    }
+}
+
+function getActivityIcon(status) {
+    const icons = {
+        'new': 'plus-circle',
+        'in_progress': 'gear',
+        'completed': 'check-circle'
+    };
+    return icons[status] || 'circle';
+}
+{% endif %}
+
+async function loadSalaryData() {
+    try {
+        const period = document.getElementById('salaryPeriod').value;
+        const [year, month] = period.split('-');
+        
+        const startDate = `${year}-${month}-01`;
+        const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        
+        const response = await fetch(`/api/finance/calculate-salary/{{ user.id }}/?start_date=${startDate}&end_date=${endDate}`);
+        const data = await response.json();
+        
+        if (data.salary) {
+            updateSalaryDisplay(data.salary);
+        } else {
+            throw new Error('Данные о зарплате не получены');
+        }
+        
+    } catch (error) {
+        console.error('Error loading salary data:', error);
+        document.getElementById('salaryContent').innerHTML = `
+            <div class="text-center py-4">
+                <i class="bi bi-exclamation-triangle text-danger display-4"></i>
+                <p class="mt-2 text-muted">Ошибка загрузки данных о зарплате</p>
+                <button class="btn btn-primary" onclick="loadSalaryData()">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Попробовать снова
+                </button>
+            </div>
+        `;
+    }
+}
+
+function updateSalaryDisplay(salaryData) {
+    const content = document.getElementById('salaryContent');
+    
+    let salaryCards = '';
+    let detailRows = '';
+    
+    {% if user.role == 'manager' %}
+    salaryCards = `
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div>
+                    <div class="salary-label">Общая зарплата</div>
+                    <div class="salary-value text-success">${formatCurrency(salaryData.total_salary)}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-wallet2"></i>
+                </div>
+                <div>
+                    <div class="salary-label">Фиксированная часть</div>
+                    <div class="salary-value">${formatCurrency(salaryData.fixed_salary || 0)}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-trophy"></i>
+                </div>
+                <div>
+                    <div class="salary-label">Бонусы за заказы</div>
+                    <div class="salary-value text-primary">${formatCurrency(salaryData.orders_bonus || 0)}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div>
+                    <div class="salary-label">% с продаж</div>
+                    <div class="salary-value text-info">${formatCurrency(salaryData.sales_bonus || 0)}</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    detailRows = `
+        <tr><td>Завершенные заказы</td><td class="text-end">${salaryData.completed_orders_count || 0} шт.</td></tr>
+        <tr><td>Продажи кондиционеров</td><td class="text-end">${(salaryData.sales_details && salaryData.sales_details.conditioner && salaryData.sales_details.conditioner.count) || 0} шт.</td></tr>
+        <tr><td>Дополнительные услуги</td><td class="text-end">${(salaryData.sales_details && salaryData.sales_details.additional && salaryData.sales_details.additional.count) || 0} шт.</td></tr>
+    `;
+    
+    {% elif user.role == 'installer' %}
+    salaryCards = `
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div>
+                    <div class="salary-label">Общая зарплата</div>
+                    <div class="salary-value text-success">${formatCurrency(salaryData.total_salary)}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-tools"></i>
+                </div>
+                <div>
+                    <div class="salary-label">За монтажи</div>
+                    <div class="salary-value">${formatCurrency(salaryData.installation_pay || 0)}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-plus-circle"></i>
+                </div>
+                <div>
+                    <div class="salary-label">Доп. услуги</div>
+                    <div class="salary-value text-primary">${formatCurrency(salaryData.additional_pay || 0)}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-award"></i>
+                </div>
+                <div>
+                    <div class="salary-label">Штрафы/Премии</div>
+                    <div class="salary-value text-warning">${formatCurrency(salaryData.penalties || 0)}</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    detailRows = `
+        <tr><td>Завершенные монтажи</td><td class="text-end">${salaryData.installation_count || 0} шт.</td></tr>
+        <tr><td>Дополнительные услуги</td><td class="text-end">${salaryData.additional_services_count || 0} шт.</td></tr>
+    `;
+    
+    {% elif user.role == 'owner' %}
+    salaryCards = `
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div>
+                    <div class="salary-label">Общий доход</div>
+                    <div class="salary-value text-success">${formatCurrency(salaryData.total_salary)}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-building"></i>
+                </div>
+                <div>
+                    <div class="salary-label">Доля с монтажей</div>
+                    <div class="salary-value">${formatCurrency(salaryData.installation_pay || 0)}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-pie-chart"></i>
+                </div>
+                <div>
+                    <div class="salary-label">Остаточная прибыль</div>
+                    <div class="salary-value text-success">${formatCurrency(salaryData.remaining_profit || 0)}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="salary-card">
+                <div class="salary-icon">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div>
+                    <div class="salary-label">Общая выручка</div>
+                    <div class="salary-value text-info">${formatCurrency(salaryData.total_revenue || 0)}</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    detailRows = `
+        <tr><td>Всего заказов</td><td class="text-end">${salaryData.completed_orders_count || 0} шт.</td></tr>
+        <tr><td>Общая выручка</td><td class="text-end">${formatCurrency(salaryData.total_revenue || 0)}</td></tr>
+        <tr><td>Себестоимость</td><td class="text-end">${formatCurrency(salaryData.total_cost_price || 0)}</td></tr>
+        <tr><td>Выплаты сотрудникам</td><td class="text-end">${formatCurrency(salaryData.estimated_staff_payments || 0)}</td></tr>
+    `;
+    {% endif %}
+    
+    content.innerHTML = `
+        <div class="row g-4">
+            ${salaryCards}
+        </div>
+        
+        <div class="mt-4">
+            <h6 class="mb-3">Детализация за период</h6>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <tbody>
+                        ${detailRows}
+                        <tr class="table-primary">
+                            <td><strong>Итого к выплате</strong></td>
+                            <td class="text-end"><strong>${formatCurrency(salaryData.total_salary)}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function formatPhoneNumber() {
+    let value = this.value.replace(/\D/g, '');
+    if (value.length > 0) {
+        if (value.startsWith('8') || value.startsWith('7')) {
+            value = '7' + value.slice(1);
+        }
+        value = '+7' + value.slice(1);
+        if (value.length > 3) value = value.slice(0, 3) + ' (' + value.slice(3);
+        if (value.length > 8) value = value.slice(0, 8) + ') ' + value.slice(8);
+        if (value.length > 14) value = value.slice(0, 14) + '-' + value.slice(14);
+        if (value.length > 17) value = value.slice(0, 17) + '-' + value.slice(17, 19);
+    }
+    this.value = value;
+}
+
+function changeAvatar() {
+    // Create file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    
+    input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // For now, just show a preview. In a real app, you'd upload to server
+                showToast('Функция смены аватара будет добавлена в следующих версиях', 'info');
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    input.click();
+}
+
+async function downloadSalaryReport() {
+    try {
+        const period = document.getElementById('salaryPeriod').value;
+        const [year, month] = period.split('-');
+        
+        const response = await fetch(`/api/salary-report/{{ user.id }}/?year=${year}&month=${month}`);
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `salary_report_${period}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            showToast('Справка о зарплате скачана', 'success');
+        } else {
+            throw new Error('Ошибка скачивания справки');
+        }
+        
+    } catch (error) {
+        console.error('Error downloading salary report:', error);
+        showToast('Ошибка скачивания справки', 'danger');
+    }
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'new': 'warning',
+        'in_progress': 'primary',
+        'completed': 'success'
+    };
+    return colors[status] || 'secondary';
+}
+</script>
+
+<style>
+.salary-card {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.salary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.salary-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+    margin-right: 1rem;
+}
+
+.salary-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+}
+
+.salary-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--dark-color);
+}
+
+.activity-item {
+    padding: 0.75rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+    background-color: #f8f9fa;
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+}
+
+.user-avatar {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    position: relative;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+
+.table-primary {
+    background-color: rgba(79, 70, 229, 0.1);
+}
+
+.table-primary td {
+    border-color: rgba(79, 70, 229, 0.2);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .salary-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .salary-icon {
+        margin-right: 0;
+        margin-bottom: 1rem;
+    }
+    
+    .activity-item {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .activity-icon {
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Animation for salary cards */
+@keyframes countUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.salary-card {
+    animation: countUp 0.5s ease-out;
+}
+
+.salary-card:nth-child(2) { animation-delay: 0.1s; }
+.salary-card:nth-child(3) { animation-delay: 0.2s; }
+.salary-card:nth-child(4) { animation-delay: 0.3s; }
+</style>
+{% endblock %}

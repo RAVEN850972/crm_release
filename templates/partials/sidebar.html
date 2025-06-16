@@ -1,0 +1,271 @@
+{% load static %}
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="logo">
+            <div class="logo-icon">C</div>
+            <div class="logo-text">
+                <h1>CRM Климат</h1>
+                <p>Управление заказами</p>
+            </div>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-section">
+            <div class="nav-section-title">Основное</div>
+            <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" data-page="dashboard">
+                <span class="nav-item-icon">📊</span>
+                Дашборд
+            </a>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Управление</div>
+            <a href="{% url 'clients:list' %}" class="nav-item {% if 'clients' in request.resolver_match.url_name %}active{% endif %}" data-page="clients">
+                <span class="nav-item-icon">👥</span>
+                Клиенты
+            </a>
+            <a href="{% url 'orders:list' %}" class="nav-item {% if 'orders' in request.resolver_match.url_name %}active{% endif %}" data-page="orders">
+                <span class="nav-item-icon">📦</span>
+                Заказы
+            </a>
+            <a href="{% url 'services:list' %}" class="nav-item {% if 'services' in request.resolver_match.url_name %}active{% endif %}" data-page="services">
+                <span class="nav-item-icon">🛠</span>
+                Услуги
+            </a>
+            <a href="{% url 'calendar:index' %}" class="nav-item {% if 'calendar' in request.resolver_match.url_name %}active{% endif %}" data-page="calendar">
+                <span class="nav-item-icon">📅</span>
+                Календарь
+            </a>
+        </div>
+
+        {% if user.role == 'owner' or user.role == 'manager' %}
+        <div class="nav-section">
+            <div class="nav-section-title">Администрирование</div>
+            
+            {% if user.role == 'owner' %}
+            <a href="{% url 'users:list' %}" class="nav-item {% if 'users' in request.resolver_match.url_name %}active{% endif %}" data-page="users">
+                <span class="nav-item-icon">👨‍💼</span>
+                Сотрудники
+            </a>
+            <a href="{% url 'finance:dashboard' %}" class="nav-item {% if 'finance' in request.resolver_match.url_name %}active{% endif %}" data-page="finance">
+                <span class="nav-item-icon">💰</span>
+                Финансы
+            </a>
+            {% endif %}
+            
+            <a href="{% url 'reports:index' %}" class="nav-item {% if 'reports' in request.resolver_match.url_name %}active{% endif %}" data-page="reports">
+                <span class="nav-item-icon">📈</span>
+                Отчеты
+            </a>
+            
+            {% if user.role == 'owner' %}
+            <a href="{% url 'settings:index' %}" class="nav-item {% if 'settings' in request.resolver_match.url_name %}active{% endif %}" data-page="settings">
+                <span class="nav-item-icon">⚙️</span>
+                Настройки
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">
+                {{ user.first_name|first|upper }}
+            </div>
+            <div class="user-details">
+                <h4 id="userName">{{ user.get_full_name }}</h4>
+                <p id="userRole">{{ user.get_role_display }}</p>
+            </div>
+        </div>
+        <div class="user-actions">
+            <a href="{% url 'users:profile' %}" class="btn-profile">Профиль</a>
+            <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="logout-btn">Выход</button>
+            </form>
+        </div>
+    </div>
+</aside>
+
+<style>
+    .sidebar-header {
+        padding: 20px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+    }
+
+    .logo {
+        display: flex;
+        align-items: center;
+    }
+
+    .logo-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        margin-right: 12px;
+    }
+
+    .logo-text h1 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 2px;
+    }
+
+    .logo-text p {
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .sidebar-nav {
+        flex: 1;
+        padding: 20px 0;
+        overflow-y: auto;
+    }
+
+    .nav-section {
+        margin-bottom: 30px;
+    }
+
+    .nav-section-title {
+        padding: 0 20px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+    }
+
+    .nav-item {
+        display: block;
+        padding: 12px 20px;
+        color: #64748b;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
+        position: relative;
+    }
+
+    .nav-item:hover {
+        background: #f1f5f9;
+        color: #475569;
+        text-decoration: none;
+    }
+
+    .nav-item.active {
+        background: #eff6ff;
+        color: #2563eb;
+        border-left-color: #2563eb;
+    }
+
+    .nav-item.active::after {
+        content: '';
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 6px;
+        background: #2563eb;
+        border-radius: 50%;
+    }
+
+    .nav-item-icon {
+        display: inline-block;
+        width: 20px;
+        margin-right: 12px;
+        text-align: center;
+    }
+
+    .sidebar-footer {
+        padding: 20px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        margin-right: 12px;
+    }
+
+    .user-details h4 {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .user-details p {
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .user-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .user-actions .btn-profile,
+    .user-actions .logout-btn {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        color: #64748b;
+        text-align: center;
+    }
+
+    .user-actions .btn-profile:hover,
+    .user-actions .logout-btn:hover {
+        background: #f8fafc;
+        text-decoration: none;
+    }
+
+    .logout-btn {
+        color: #dc2626 !important;
+        border-color: #fecaca !important;
+    }
+
+    .logout-btn:hover {
+        background: #fef2f2 !important;
+    }
+
+    /* Адаптивность */
+    @media (max-width: 1024px) {
+        .sidebar {
+            transform: translateX(-100%);
+        }
+
+        .sidebar.mobile-open {
+            transform: translateX(0);
+        }
+    }
+</style>

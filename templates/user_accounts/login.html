@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+
+{% block title %}Вход в систему - CRM{% endblock %}
+
+{% block login_content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5 col-xl-4">
+                <div class="card shadow-lg border-0">
+                    <div class="card-body p-5">
+                        <!-- Logo and Title -->
+                        <div class="text-center mb-4">
+                            <div class="mb-3">
+                                <div style="width: 64px; height: 64px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                    <i class="bi bi-snow2" style="font-size: 2rem; color: white;"></i>
+                                </div>
+                            </div>
+                            <h3 class="fw-bold mb-2">Добро пожаловать!</h3>
+                            <p class="text-muted">Войдите в свой аккаунт CRM системы</p>
+                        </div>
+
+                        <!-- Login Form -->
+                        <form method="post" id="loginForm">
+                            {% csrf_token %}
+                            
+                            <!-- Username Field -->
+                            <div class="mb-3">
+                                <label for="username" class="form-label fw-medium">Имя пользователя</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0">
+                                        <i class="bi bi-person text-muted"></i>
+                                    </span>
+                                    <input type="text" 
+                                           class="form-control border-start-0 ps-0" 
+                                           id="username" 
+                                           name="username" 
+                                           required 
+                                           autocomplete="username"
+                                           placeholder="Введите имя пользователя">
+                                </div>
+                            </div>
+
+                            <!-- Password Field -->
+                            <div class="mb-4">
+                                <label for="password" class="form-label fw-medium">Пароль</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0">
+                                        <i class="bi bi-lock text-muted"></i>
+                                    </span>
+                                    <input type="password" 
+                                           class="form-control border-start-0 border-end-0 ps-0" 
+                                           id="password" 
+                                           name="password" 
+                                           required 
+                                           autocomplete="current-password"
+                                           placeholder="Введите пароль">
+                                    <button type="button" class="input-group-text bg-light border-start-0" id="togglePassword">
+                                        <i class="bi bi-eye text-muted"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Remember Me -->
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="rememberMe" name="remember_me">
+                                    <label class="form-check-label text-muted" for="rememberMe">
+                                        Запомнить меня
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Login Button -->
+                            <button type="submit" class="btn btn-primary w-100 py-2 fw-medium" id="loginBtn">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>
+                                Войти в систему
+                            </button>
+                        </form>
+
+                        <!-- Demo Accounts Info -->
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <h6 class="fw-medium mb-2">Демо аккаунты:</h6>
+                            <div class="small text-muted">
+                                <div class="mb-1"><strong>Владелец:</strong> root / admin</div>
+                                <div class="mb-1"><strong>Менеджер:</strong> manager / manager123</div>
+                                <div><strong>Монтажник:</strong> installer / installer123</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="text-center mt-4">
+                    <p class="text-white-50 small mb-0">
+                        © 2024 CRM Система. Все права защищены.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Ошибка входа
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="errorMessage" class="mb-0"></p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Понятно</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .input-group-text {
+        background-color: #f8f9fa !important;
+        border-color: #dee2e6;
+    }
+    
+    .form-control {
+        border-color: #dee2e6;
+    }
+    
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+    }
+    
+    .input-group .form-control:focus {
+        z-index: 3;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    }
+    
+    .card {
+        border-radius: 16px;
+        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .bg-light {
+        background-color: #f8f9fa !important;
+    }
+    
+    /* Loading animation */
+    .btn .loading {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Floating animation for the card */
+    .card {
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+
+    // Toggle password visibility
+    togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        const icon = this.querySelector('i');
+        icon.className = type === 'password' ? 'bi bi-eye text-muted' : 'bi bi-eye-slash text-muted';
+    });
+
+    // Handle form submission
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const originalBtnText = loginBtn.innerHTML;
+        
+        // Show loading state
+        loginBtn.innerHTML = '<span class="loading me-2"></span>Вход в систему...';
+        loginBtn.disabled = true;
+        
+        try {
+            const response = await fetch('{% url "user_accounts:login" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Success - redirect to dashboard
+                loginBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Успешно!';
+                loginBtn.className = 'btn btn-success w-100 py-2 fw-medium';
+                
+                setTimeout(() => {
+                    window.location.href = data.redirect || '{% url "dashboard" %}';
+                }, 1000);
+            } else {
+                // Error - show error modal
+                document.getElementById('errorMessage').textContent = data.error || 'Произошла ошибка при входе в систему';
+                errorModal.show();
+                
+                // Reset button
+                loginBtn.innerHTML = originalBtnText;
+                loginBtn.disabled = false;
+                
+                // Shake animation for form
+                loginForm.style.animation = 'shake 0.5s ease-in-out';
+                setTimeout(() => {
+                    loginForm.style.animation = '';
+                }, 500);
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            document.getElementById('errorMessage').textContent = 'Ошибка соединения с сервером';
+            errorModal.show();
+            
+            // Reset button
+            loginBtn.innerHTML = originalBtnText;
+            loginBtn.disabled = false;
+        }
+    });
+
+    // Add shake animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Focus on username field
+    document.getElementById('username').focus();
+
+    // Demo account quick login buttons
+    const demoAccounts = [
+        { username: 'root', password: 'admin', role: 'Владелец' },
+        { username: 'manager', password: 'manager123', role: 'Менеджер' },
+        { username: 'installer', password: 'installer123', role: 'Монтажник' }
+    ];
+
+    // Add quick login functionality
+    const demoContainer = document.querySelector('.bg-light');
+    demoContainer.addEventListener('click', function(e) {
+        const target = e.target.closest('div');
+        if (target && target.textContent.includes(':')) {
+            const text = target.textContent;
+            const match = text.match(/(\w+)\s*\/\s*(\w+)/);
+            if (match) {
+                document.getElementById('username').value = match[1];
+                document.getElementById('password').value = match[2];
+                
+                // Add visual feedback
+                target.style.background = 'var(--primary-color)';
+                target.style.color = 'white';
+                target.style.borderRadius = '4px';
+                target.style.padding = '2px 4px';
+                target.style.cursor = 'pointer';
+                
+                setTimeout(() => {
+                    target.style.background = '';
+                    target.style.color = '';
+                    target.style.borderRadius = '';
+                    target.style.padding = '';
+                }, 1000);
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

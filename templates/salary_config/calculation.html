@@ -1,0 +1,87 @@
+{% extends 'salary_config/base.html' %}
+
+{% block title %}Расчет зарплат{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <h1>Расчет зарплат</h1>
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.errors %}
+                                <div class="text-danger">{{ field.errors }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary">Рассчитать</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    {% if calculation_result %}
+    <div class="col-md-6">
+        <h2>Результат расчета</h2>
+        <div class="card">
+            <div class="card-header">
+                <h5>
+                    {% if calculation_result.user %}
+                        {{ calculation_result.user.get_full_name|default:calculation_result.user.username }}
+                        ({{ calculation_result.user.get_role_display }})
+                    {% else %}
+                        Владелец
+                    {% endif %}
+                </h5>
+                <small class="text-muted">{{ calculation_result.period }}</small>
+            </div>
+            <div class="card-body">
+                <p><strong>Конфигурация:</strong> {{ calculation_result.config_name }}</p>
+                
+                {% if calculation_result.fixed_salary %}
+                    <p><strong>Фиксированная зарплата:</strong> {{ calculation_result.fixed_salary }} руб.</p>
+                {% endif %}
+                
+                {% if calculation_result.installation_pay %}
+                    <p><strong>Оплата за монтажи:</strong> {{ calculation_result.installation_pay }} руб.
+                    {% if calculation_result.installation_count %}
+                        ({{ calculation_result.installation_count }} шт.)
+                    {% endif %}
+                    </p>
+                {% endif %}
+                
+                {% if calculation_result.orders_bonus %}
+                    <p><strong>Бонус за заказы:</strong> {{ calculation_result.orders_bonus }} руб.</p>
+                {% endif %}
+                
+                {% if calculation_result.sales_bonus %}
+                    <p><strong>Бонус с продаж:</strong> {{ calculation_result.sales_bonus }} руб.</p>
+                {% endif %}
+                
+                {% if calculation_result.additional_pay %}
+                    <p><strong>Доп. услуги:</strong> {{ calculation_result.additional_pay }} руб.</p>
+                {% endif %}
+                
+                {% if calculation_result.adjustments %}
+                    <p><strong>Корректировки:</strong> 
+                        {% if calculation_result.adjustments > 0 %}
+                            <span class="text-success">+{{ calculation_result.adjustments }} руб.</span>
+                        {% else %}
+                            <span class="text-danger">{{ calculation_result.adjustments }} руб.</span>
+                        {% endif %}
+                    </p>
+                {% endif %}
+                
+                <hr>
+                <h4><strong>Итого: {{ calculation_result.total_salary }} руб.</strong></h4>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

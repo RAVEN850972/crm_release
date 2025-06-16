@@ -1,0 +1,124 @@
+{% extends 'salary_config/base.html' %}
+
+{% block title %}{{ config.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ config.name }}</h1>
+    <div class="d-flex gap-2">
+        <a href="{% url 'salary_config:config_edit' config.pk %}" class="btn btn-primary">Редактировать</a>
+        <a href="{% url 'salary_config:config_list' %}" class="btn btn-outline-secondary">Назад к списку</a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Основная информация -->
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Информация о конфигурации</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Описание:</strong> {{ config.description|default:"Не указано" }}</p>
+                <p><strong>Статус:</strong> 
+                    {% if config.is_active %}
+                        <span class="badge bg-success">Активна</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Неактивна</span>
+                    {% endif %}
+                </p>
+                <p><strong>Создана:</strong> {{ config.created_at|date:"d.m.Y H:i" }}</p>
+                <p><strong>Обновлена:</strong> {{ config.updated_at|date:"d.m.Y H:i" }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Настройки ролей -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6>Настройки менеджера</h6>
+            </div>
+            <div class="card-body">
+                {% if has_manager_config %}
+                    <p><strong>Оклад:</strong> {{ config.manager_config.fixed_salary }} руб.</p>
+                    <p><strong>Бонус за заказ:</strong> {{ config.manager_config.bonus_per_completed_order }} руб.</p>
+                    <p><strong>% с кондиционеров:</strong> {{ config.manager_config.conditioner_profit_percentage }}%</p>
+                    <p><strong>% с доп. услуг:</strong> {{ config.manager_config.additional_services_profit_percentage }}%</p>
+                {% else %}
+                    <p class="text-muted">Настройки не заданы</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6>Настройки монтажника</h6>
+            </div>
+            <div class="card-body">
+                {% if has_installer_config %}
+                    <p><strong>За монтаж:</strong> {{ config.installer_config.payment_per_installation }} руб.</p>
+                    <p><strong>% с доп. услуг:</strong> {{ config.installer_config.additional_services_profit_percentage }}%</p>
+                    <p><strong>Бонус за качество:</strong> {{ config.installer_config.quality_bonus }} руб.</p>
+                    <p><strong>Штраф за жалобу:</strong> {{ config.installer_config.penalty_per_complaint }} руб.</p>
+                {% else %}
+                    <p class="text-muted">Настройки не заданы</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h6>Настройки владельца</h6>
+            </div>
+            <div class="card-body">
+                {% if has_owner_config %}
+                    <p><strong>За монтаж:</strong> {{ config.owner_config.payment_per_installation }} руб.</p>
+                    <p><strong>% от прибыли:</strong> {{ config.owner_config.remaining_profit_percentage }}%</p>
+                {% else %}
+                    <p class="text-muted">Настройки не заданы</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Назначения -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Назначенные пользователи</h5>
+            </div>
+            <div class="card-body">
+                {% if assignments %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Пользователь</th>
+                                    <th>Роль</th>
+                                    <th>Дата назначения</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in assignments %}
+                                <tr>
+                                    <td>{{ assignment.user.get_full_name|default:assignment.user.username }}</td>
+                                    <td>{{ assignment.user.get_role_display }}</td>
+                                    <td>{{ assignment.assigned_at|date:"d.m.Y H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Конфигурация не назначена ни одному пользователю</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

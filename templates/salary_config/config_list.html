@@ -1,0 +1,46 @@
+{% extends 'salary_config/base.html' %}
+
+{% block title %}Конфигурации зарплат{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Конфигурации зарплат</h1>
+    <a href="{% url 'salary_config:config_create' %}" class="btn btn-primary">Создать конфигурацию</a>
+</div>
+
+<div class="row">
+    {% for config in configs %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">{{ config.name }}</h5>
+                {% if config.is_active %}
+                    <span class="badge bg-success">Активна</span>
+                {% else %}
+                    <span class="badge bg-secondary">Неактивна</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <p class="card-text">{{ config.description|truncatewords:15 }}</p>
+                <p class="text-muted small">
+                    Назначений: {{ config.assignments_count }}<br>
+                    Создана: {{ config.created_at|date:"d.m.Y" }}
+                </p>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'salary_config:config_detail' config.pk %}" class="btn btn-outline-primary btn-sm">Детали</a>
+                    <a href="{% url 'salary_config:config_edit' config.pk %}" class="btn btn-outline-secondary btn-sm">Изменить</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="text-center py-5">
+            <h4>Конфигурации не найдены</h4>
+            <p>Создайте первую конфигурацию зарплат</p>
+            <a href="{% url 'salary_config:config_create' %}" class="btn btn-primary">Создать конфигурацию</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

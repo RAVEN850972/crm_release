@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Создание конфигурации - CRM{% endblock %}
+
+{% block content %}
+<h1>Создание конфигурации зарплаты</h1>
+<form method="post">
+    {% csrf_token %}
+    <div class="card">
+        <div class="card-body">
+            <h5>Основные настройки</h5>
+            <!-- Здесь будут поля формы -->
+            <p>Форма создания конфигурации</p>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary mt-3">Создать</button>
+</form>
+{% endblock %}

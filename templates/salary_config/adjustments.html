@@ -1,0 +1,67 @@
+{% extends 'salary_config/base.html' %}
+
+{% block title %}Корректировки зарплат{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Корректировки зарплат</h1>
+    <a href="{% url 'salary_config:adjustment_create' %}" class="btn btn-primary">Новая корректировка</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if adjustments %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Сотрудник</th>
+                            <th>Тип</th>
+                            <th>Сумма</th>
+                            <th>Период</th>
+                            <th>Причина</th>
+                            <th>Создано</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for adjustment in adjustments %}
+                        <tr>
+                            <td>{{ adjustment.user.get_full_name|default:adjustment.user.username }}</td>
+                            <td>
+                                {% if adjustment.adjustment_type == 'bonus' %}
+                                    <span class="badge bg-success">Премия</span>
+                                {% elif adjustment.adjustment_type == 'penalty' %}
+                                    <span class="badge bg-danger">Штраф</span>
+                                {% else %}
+                                    <span class="badge bg-info">Корректировка</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if adjustment.amount > 0 %}
+                                    <span class="text-success">+{{ adjustment.amount }} руб.</span>
+                                {% else %}
+                                    <span class="text-danger">{{ adjustment.amount }} руб.</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ adjustment.period_start }} - {{ adjustment.period_end }}</td>
+                            <td>{{ adjustment.reason|truncatewords:10 }}</td>
+                            <td>{{ adjustment.created_at|date:"d.m.Y" }}</td>
+                            <td>
+                                <a href="{% url 'salary_config:adjustment_edit' adjustment.pk %}" class="btn btn-sm btn-outline-primary">Изменить</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <h4>Корректировки не найдены</h4>
+                <p>Создайте первую корректировку зарплаты</p>
+                <a href="{% url 'salary_config:adjustment_create' %}" class="btn btn-primary">Создать корректировку</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
