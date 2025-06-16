@@ -3,7 +3,7 @@
 # === НАСТРОЙКИ ===
 PROJECT_NAME="crm"
 PROJECT_DIR="/opt/$PROJECT_NAME"
-GIT_REPO="https://github.com/your-user/your-repo.git" # ← замени на свой
+GIT_REPO="https://github.com/RAVEN850972/crm_release" # ← замени на свой
 DJANGO_PORT=8000
 DJANGO_SUPERUSER_EMAIL="admin@example.com"
 
