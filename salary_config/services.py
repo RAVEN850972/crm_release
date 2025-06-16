@@ -239,7 +239,7 @@ class SalaryCalculationService:
         total_salary = fixed_salary + orders_bonus + sales_bonus + total_adjustments
 
         paid = SalaryPayment.objects.filter(
-            user=installer,
+            user=manager,
             period_start__gte=start_date,
             period_end__lte=end_date
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
@@ -358,7 +358,7 @@ class SalaryCalculationService:
         total_salary = installation_pay + owner_profit_share + adjustments
 
         paid = SalaryPayment.objects.filter(
-            user=installer,
+            user=owner_user,
             period_start__gte=start_date,
             period_end__lte=end_date
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
